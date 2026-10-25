@@ -1,19 +1,23 @@
-<div align="center">🚗 DriveDeck
+<div align="center">
 
-Your drive, simplified.
+# 🚗 DriveDeck
 
-A smarter dashboard for your everyday drive.
+### Your drive, simplified.
+
+**A smarter dashboard for your everyday drive.**
 
 Quick access to navigation, music, and an experimental Android Auto media experience — all in one place.
 
-<br>Created by "FrdsArff" (https://github.com/frdsarff)
+**Created by [FrdsArff](https://github.com/frdsarff)**
 
-<br>"Android" (https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)
-"Kotlin" (https://img.shields.io/badge/Language-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
-"Jetpack Compose" (https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
-"Media3" (https://img.shields.io/badge/Media-AndroidX%20Media3-20232A?style=for-the-badge)
+![Android](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Language-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
+![Media3](https://img.shields.io/badge/Media-AndroidX%20Media3-20232A?style=for-the-badge)
 
-</div>---
+</div>
+
+---
 
 ✨ About DriveDeck
 
