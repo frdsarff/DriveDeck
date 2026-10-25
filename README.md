@@ -28,14 +28,14 @@ The vision is simple: less clutter, quick access, and a better driving companion
 🚀 Features
 
 Feature| Status| Description
-🗺️ Waze| ✅| Quick access to Waze navigation
-📍 Google Maps| ✅| Quick access to Google Maps
-🎵 Spotify| ✅| Shortcut to Spotify
-🎧 YouTube Music| ✅| Shortcut to YouTube Music
-▶️ YouTube| ✅| Opens YouTube or its website
-🚘 Android Auto| 🧪| Experimental Media3 media service
-🌦️ Live Weather| 🔜| Weather integration planned
-⚙️ Dashboard Settings| 🔜| Customisation planned
+- 🗺️ Waze| ✅| Quick access to Waze navigation
+- 📍 Google Maps| ✅| Quick access to Google Maps
+- 🎵 Spotify| ✅| Shortcut to Spotify
+- 🎧 YouTube Music| ✅| Shortcut to YouTube Music
+- ▶️ YouTube| ✅| Opens YouTube or its website
+- 🚘 Android Auto| 🧪| Experimental Media3 media service
+- 🌦️ Live Weather| 🔜| Weather integration planned
+- ⚙️ Dashboard Settings| 🔜| Customisation planned
 
 Important: The navigation and music entries above are phone-dashboard shortcuts. They do not automatically become native apps inside Android Auto.
 
