@@ -225,10 +225,20 @@ private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit, onBack: 
     val mutedColor = if (isLight) Color(0xFF646875) else Color(0xFFA4AAB5)
     val accent = Color(0xFF26CDB5)
     val bm = language == "Bahasa Melayu"
-    val hasNotificationAccess = remember {
-        android.provider.Settings.Secure.getString(
-            context.contentResolver, "enabled_notification_listeners"
-        )?.contains(context.packageName) == true
+    var hasNotificationAccess by remember {
+        mutableStateOf(
+            android.provider.Settings.Secure.getString(
+                context.contentResolver, "enabled_notification_listeners"
+            )?.contains(context.packageName) == true
+        )
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            hasNotificationAccess = android.provider.Settings.Secure.getString(
+                context.contentResolver, "enabled_notification_listeners"
+            )?.contains(context.packageName) == true
+            delay(700)
+        }
     }
 
     MaterialTheme(
@@ -242,7 +252,7 @@ private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit, onBack: 
     ) {
         Column(Modifier.fillMaxSize().background(bg)) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp),
+                Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 38.dp, bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("‹", color = textColor, fontSize = 32.sp, modifier = Modifier.clickable(onClick = onBack))
