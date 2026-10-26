@@ -42,7 +42,6 @@ class PlaybackService : MediaLibraryService() {
         super.onCreate()
 
         MediaBridge.start(this)
-
         player = BridgePlayer()
 
         librarySession = MediaLibrarySession.Builder(
@@ -51,7 +50,8 @@ class PlaybackService : MediaLibraryService() {
             DriveDeckLibraryCallback()
         ).build()
 
-        // 1. Bila lagu / state berubah: refresh skrin kereta + cari lirik baru
+        // Keep the media session metadata stable; lyrics belong in the lyrics screen,
+        // not in the track title exposed to Android Auto's system media UI.
         scope.launch {
             MediaBridge.state.collect { np ->
                 player.refresh()
@@ -60,24 +60,20 @@ class PlaybackService : MediaLibraryService() {
                 if (key != lyricsKey) {
                     lyricsKey = key
                     lyrics = emptyList()
-                    player.setLyricLine(null)
 
                     if (SHOW_LYRICS_ON_CAR && np.title.isNotBlank()) {
                         launch {
                             val result = LyricsRepository.load(
                                 np.title, np.artist, np.durationMs
                             )
-                            if (lyricsKey == key) {
-                                lyrics = result
-                                updateLyricLine()
-                            }
+                            if (lyricsKey == key) lyrics = result
                         }
                     }
                 }
             }
         }
 
-        // 2. Semak baris lirik semasa setiap 300ms
+        // Keep lyric timing work isolated from the media metadata exposed to the host.
         scope.launch {
             while (isActive) {
                 delay(300)
@@ -87,10 +83,9 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun updateLyricLine() {
+        // Lyrics are rendered by LyricsCarAppService. Do not replace the song title
+        // with each lyric line in the system media session.
         if (!SHOW_LYRICS_ON_CAR || lyrics.isEmpty()) return
-        val pos = player.estimatedPositionMs()
-        val idx = lyrics.indexOfLast { it.timeMs <= pos + LYRIC_LEAD_MS }
-        player.setLyricLine(if (idx >= 0) lyrics[idx].text else null)
     }
 
     override fun onGetSession(
@@ -104,18 +99,12 @@ class PlaybackService : MediaLibraryService() {
         super.onDestroy()
     }
 
-    // ------------------------------------------------------------------
-    // Player yang mirror app yang tengah main kat phone
-    // ------------------------------------------------------------------
     @OptIn(UnstableApi::class)
     private class BridgePlayer : SimpleBasePlayer(Looper.getMainLooper()) {
 
         private var cachedKey: String? = null
         private var cachedArt: ByteArray? = null
 
-        private var lyricLine: String? = null
-
-        /** Posisi lagu sekarang, dikira dari masa update terakhir bridge (jam sama dengan kad phone). */
         fun estimatedPositionMs(): Long {
             val np = MediaBridge.state.value
             val extra = if (np.isPlaying) SystemClock.elapsedRealtime() - np.updatedAt else 0L
@@ -124,12 +113,6 @@ class PlaybackService : MediaLibraryService() {
         }
 
         fun refresh() {
-            invalidateState()
-        }
-
-        fun setLyricLine(text: String?) {
-            if (text == lyricLine) return
-            lyricLine = text
             invalidateState()
         }
 
@@ -161,16 +144,14 @@ class PlaybackService : MediaLibraryService() {
                     .build()
             }
 
-            // Key ni TAK termasuk lirik, supaya progress bar tak reset bila baris tukar
             val key = "${np.packageName}|${np.title}|${np.artist}"
             val art = artworkFor(key, np.artwork)
 
-            val lyric = lyricLine?.trim().orEmpty()
-            val showLyric = SHOW_LYRICS_ON_CAR && lyric.isNotEmpty()
-
+            // Always publish the actual track metadata. Synchronized lyrics are
+            // displayed by the separate Car App Library screen.
             val metadata = MediaMetadata.Builder()
-                .setTitle(if (showLyric) lyric else np.title)
-                .setArtist(if (showLyric) "${np.title} • ${np.artist}" else np.artist)
+                .setTitle(np.title)
+                .setArtist(np.artist)
                 .setAlbumArtist(np.artist)
                 .setAlbumTitle(np.appName)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
@@ -183,7 +164,7 @@ class PlaybackService : MediaLibraryService() {
                 }
                 .build()
 
-            val current = MediaItemData.Builder(key)
+            val current = MediaItemData.Builder(CURRENT_ID)
                 .setMediaItem(
                     MediaItem.Builder()
                         .setMediaId(CURRENT_ID)
@@ -197,29 +178,18 @@ class PlaybackService : MediaLibraryService() {
                 .setIsSeekable(np.durationMs > 0)
                 .build()
 
-            val previous = placeholder("prev", "Lagu sebelumnya")
-            val next = placeholder("next", "Lagu seterusnya")
-
+            // Do not fabricate previous/next playlist entries. They can make the
+            // host expose a misleading queue containing placeholder tracks.
             return State.Builder()
                 .setAvailableCommands(commands)
-                .setPlaylist(listOf(previous, current, next))
-                .setCurrentMediaItemIndex(1)
+                .setPlaylist(listOf(current))
+                .setCurrentMediaItemIndex(0)
                 .setPlaybackState(Player.STATE_READY)
                 .setPlayWhenReady(
                     np.isPlaying,
                     Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
                 )
                 .setContentPositionMs(estimatedPositionMs())
-                .build()
-        }
-
-        private fun placeholder(id: String, title: String): MediaItemData {
-            val md = MediaMetadata.Builder().setTitle(title).build()
-            return MediaItemData.Builder(id)
-                .setMediaItem(
-                    MediaItem.Builder().setMediaId(id).setMediaMetadata(md).build()
-                )
-                .setMediaMetadata(md)
                 .build()
         }
 
@@ -252,8 +222,6 @@ class PlaybackService : MediaLibraryService() {
             return cachedArt
         }
 
-        // ---- Arahan dari Android Auto -> dihantar ke app kat phone ----
-
         override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
             if (playWhenReady) MediaBridge.play() else MediaBridge.pause()
             return Futures.immediateVoidFuture()
@@ -273,11 +241,6 @@ class PlaybackService : MediaLibraryService() {
 
                 Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM ->
                     if (positionMs != C.TIME_UNSET) MediaBridge.seekTo(positionMs)
-
-                Player.COMMAND_SEEK_TO_MEDIA_ITEM -> when (mediaItemIndex) {
-                    0 -> MediaBridge.previous()
-                    2 -> MediaBridge.next()
-                }
             }
             return Futures.immediateVoidFuture()
         }
@@ -300,9 +263,6 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
-    // ------------------------------------------------------------------
-    // Browse tree Android Auto
-    // ------------------------------------------------------------------
     private class DriveDeckLibraryCallback : MediaLibrarySession.Callback {
 
         private val root: MediaItem
@@ -369,13 +329,8 @@ class PlaybackService : MediaLibraryService() {
     companion object {
         const val ROOT_ID = "root"
         const val CURRENT_ID = "bridge-current"
-
-        /** Letak false kalau nak skrin kereta tunjuk nama artis macam biasa. */
         const val SHOW_LYRICS_ON_CAR = true
-
-        /** Lirik muncul lebih awal sikit (ms). Naikkan kalau rasa lambat kat kereta. */
         const val LYRIC_LEAD_MS = 300L
-
         const val DEMO_TRACK_ID = "demo-track"
         const val DEMO_TRACK_URL =
             "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
