@@ -4,191 +4,168 @@
 
 ### Your drive, simplified.
 
-**A smarter dashboard for your everyday drive.**
-
-Quick access to navigation, music, and an experimental Android Auto media experience — all in one place.
+**A head-unit-inspired dashboard with music, synchronized lyrics, and entertainment shortcuts.**
 
 **Created by [FrdsArff](https://github.com/frdsarff)**
 
 ![Android](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Language-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 ![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
-![Media3](https://img.shields.io/badge/Media-AndroidX%20Media3-20232A?style=for-the-badge)
 
 </div>
 
 ---
 
-✨ About DriveDeck
+## ✨ About DriveDeck
 
-DriveDeck is an Android companion dashboard project designed to make everyday driving apps easier to access.
+DriveDeck is an early-stage Android dashboard project inspired by modern car head-unit interfaces. It combines a landscape home dashboard, media shortcuts, and a dedicated music player with synchronized lyrics.
 
-Built with Kotlin and Jetpack Compose, DriveDeck combines a clean dark interface with shortcuts to navigation and music apps. The project also experiments with Android Auto media browsing using AndroidX Media3.
+The latest UI update takes inspiration from AutoDeck's home/player switching concept and uses LyricDeck as a visual reference for the lyrics player. Existing media detection and lyrics components are retained where possible.
 
-The vision is simple: less clutter, quick access, and a better driving companion experience.
+> **Status:** The dashboard/player UI has been committed to the \`rebuild/clean-start\` branch and a debug APK build succeeded. It still needs to be tested on a real head unit; a successful build does not guarantee every feature works on every device.
 
-«🚧 DriveDeck is an early-stage project. Some features are experimental or not yet connected.»
+## 🚀 Current UI
 
-🚀 Features
+### Home dashboard
+- Landscape dashboard with a live clock and date.
+- Now Playing card with album artwork and track metadata when available.
+- Quick links for YouTube Web and RTMKlik.
+- Shortcuts for Spotify and YouTube Music.
+- Small purple-inspired switcher button to move between Home and Player.
 
-Feature| Status| Description
-- 🗺️ Waze| ✅| Quick access to Waze navigation
-- 📍 Google Maps| ✅| Quick access to Google Maps
-- 🎵 Spotify| ✅| Shortcut to Spotify
-- 🎧 YouTube Music| ✅| Shortcut to YouTube Music
-- ▶️ YouTube| ✅| Opens YouTube or its website
-- 🚘 Android Auto| 🧪| Experimental Media3 media service
-- 🌦️ Live Weather| 🔜| Weather integration planned
-- ⚙️ Dashboard Settings| 🔜| Customisation planned
+### Lyrics player
+- Album artwork and track/artist information.
+- Blurred album-art background.
+- Previous, Play/Pause, and Next controls through the media bridge.
+- Synchronized lyrics with the active line highlighted and surrounding lines dimmed.
+- Home button and floating switcher to return to the dashboard.
 
-Important: The navigation and music entries above are phone-dashboard shortcuts. They do not automatically become native apps inside Android Auto.
+### Media and lyrics
+- Uses the existing \`MediaBridge\` for active media-session information and playback controls.
+- Uses \`LyricsRepository\` to retrieve synchronized lyrics.
+- May require Notification Access permission to read playback information from other apps.
+- Lyrics availability depends on the track and the lyrics provider response.
 
-🎨 Design Philosophy
+### Planned / not yet verified
+- Weather and configurable dashboard widgets.
+- User-selectable layouts and shortcut customization.
+- Additional entertainment cards.
+- Validation and polish across different head-unit screen sizes.
+- A verified Android Auto-specific experience matching the standalone dashboard UI.
 
-DriveDeck aims to provide a modern, minimal dashboard with:
+**Important architecture note:** The Compose dashboard in \`MainActivity\` is a regular Android app screen. It is not the same UI as the separate Android Auto media service. The experience depends on whether DriveDeck is opened directly on an Android head unit or displayed through Android Auto from a phone.
 
-- 🌑 A clean dark theme
-- 🧩 Simple card-based layouts
-- ⚡ Quick access to everyday apps
-- 📱 A lightweight phone companion interface
-- 🚘 An experimental Android Auto media experience
+## 🧰 Built With
 
-🛠️ Built With
+| Technology | Purpose |
+|---|---|
+| Kotlin | Main programming language |
+| Jetpack Compose | Dashboard and player UI |
+| Material 3 | UI components |
+| AndroidX Media3 / media sessions | Media-related integration |
+| Gradle Kotlin DSL | Build configuration |
 
-Technology| Purpose
-Kotlin| Main programming language
-Jetpack Compose| Modern Android UI
-Material 3| UI components and styling
-AndroidX Media3| Media playback and library service
-ExoPlayer| Audio playback engine
-Gradle Kotlin DSL| Build configuration
+## 📋 Requirements
 
-📋 Requirements
+- Android Studio and a compatible Android SDK to build from source.
+- An Android device or head unit capable of installing and running the app directly for the Compose dashboard.
+- Internet access for Gradle dependencies and online lyrics lookup.
+- Notification Access permission, when required, to read active media sessions from other apps.
+- A compatible Android Auto setup to test the separate media integration.
 
-- Android Studio
-- A compatible Android SDK
-- An Android device or emulator
-- Internet access for Gradle dependency downloads
-- A compatible Android Auto setup for testing the media service
+Current Android configuration (see \`app/build.gradle.kts\` for the source of truth):
 
-Current Android configuration
+| Setting | Value |
+|---|---|
+| Minimum SDK | 28 |
+| Compile SDK | 36 |
+| Target SDK | 35 |
+| Application ID | \`com.example.drivedeck\` |
 
-Setting| Value
-Minimum SDK| 28
-Compile SDK| 36
-Target SDK| 35
-Application ID| "com.example.drivedeck"
+## 📦 Download the Latest Build
 
-These values reflect the current project configuration and may change as development continues.
+The latest UI update was committed to the \`rebuild/clean-start\` branch.
 
-📦 Getting Started
+- [Open the latest GitHub Actions build](https://github.com/frdsarff/DriveDeck/actions/runs/40405173822)
+- In the workflow run, download the **\`DriveDeck-APK\`** artifact.
+- Extract the downloaded ZIP to find the debug APK.
 
-1. Clone the repository
+This is a development build. Test it on a compatible device and report crashes or layout issues with a screenshot and device details.
 
-git clone https://github.com/frdsarff/DriveDeck.git
+## 🛠️ Build from Source
 
-2. Open in Android Studio
+1. Clone the repository:
 
-Open the cloned "DriveDeck" project folder and allow Gradle to sync.
+   \`\`\`bash
+   git clone https://github.com/frdsarff/DriveDeck.git
+   cd DriveDeck
+   \`\`\`
 
-3. Build the application
+2. Open the project in Android Studio and allow Gradle to sync.
 
-From Android Studio:
+3. Build a debug APK:
 
-1. Select Build.
-2. Choose Build Bundle(s) / APK(s).
-3. Select Build APK(s).
-4. Locate the generated APK from the build output.
+   \`\`\`bash
+   ./gradlew assembleDebug
+   \`\`\`
 
-Alternatively, on a system with a compatible Gradle environment, run:
+   On Windows:
 
-./gradlew assembleDebug
+   \`\`\`bat
+   gradlew.bat assembleDebug
+   \`\`\`
 
-On Windows, use:
+The APK is normally generated at \`app/build/outputs/apk/debug/app-debug.apk\`.
 
-gradlew.bat assembleDebug
+## 🚘 Android Auto vs. Head-Unit Dashboard
 
-The debug APK is normally generated at:
+DriveDeck currently has two distinct concepts:
 
-app/build/outputs/apk/debug/app-debug.apk
+- **Standalone dashboard:** the Compose home and lyrics-player UI in \`MainActivity\`, intended to run as an Android app on a compatible device/head unit.
+- **Android Auto media integration:** a separate media service used to experiment with Android Auto media browsing.
 
-🚘 Android Auto Media Integration
+Changing the standalone Compose UI does not automatically change Android Auto's native media screen. These experiences must be developed and tested separately.
 
-DriveDeck uses AndroidX Media3's "MediaLibraryService" to experiment with media browsing and playback in Android Auto.
+## 🗺️ Roadmap
 
-Current implementation
+- [x] Add an AutoDeck-inspired home/player switcher concept.
+- [x] Add a landscape dashboard and entertainment shortcuts.
+- [x] Add the first synchronized-lyrics player UI pass.
+- [ ] Test the new UI on physical head units and fix device-specific layout issues.
+- [ ] Improve active-line scrolling and lyric loading/error states.
+- [ ] Add configurable widgets and shortcut/layout settings.
+- [ ] Improve metadata and artwork handling across media apps.
+- [ ] Continue improving Android Auto media browsing independently.
+- [ ] Add screenshots and demonstrations from real devices.
 
-- Media library session
-- ExoPlayer-based playback
-- A demo audio stream
-- Basic media browsing structure
+## 🧪 Testing Checklist
 
-Current limitations
+Before treating the latest UI as stable, test:
 
-- The media service currently exposes a demo audio track.
-- Native YouTube playback is not implemented.
-- Native YouTube Music integration is not implemented.
-- Phone-dashboard shortcuts do not grant access to other apps' private playback systems.
-- Weather data is not connected to a live provider.
+- Home dashboard opens in landscape.
+- Purple switcher toggles between Home and Player.
+- YouTube Web and RTMKlik links open correctly.
+- Notification/media access allows current track information to appear.
+- Artwork, track title, artist, and playback controls work with supported media apps.
+- Lyrics load and the active line follows playback.
+- Layout remains readable at the head unit's actual resolution and display scaling.
+- Android Auto media integration is tested separately from the standalone dashboard.
 
-YouTube Music should be accessed through its official supported Android Auto integration. DriveDeck does not bypass Android Auto's driving-safety restrictions.
+## 🛡️ Safety Notice
 
-🗺️ Roadmap
+DriveDeck is a driving companion concept, not a reason to interact with a screen while driving. Follow local traffic laws, configure the app while parked, and use video features only when safely parked and permitted by applicable rules. DriveDeck does not bypass Android Auto's driving-safety restrictions.
 
-- [ ] Improve Android Auto media browsing
-- [ ] Add playback states and richer media metadata
-- [ ] Add album artwork support
-- [ ] Improve playback error handling
-- [ ] Integrate live weather data
-- [ ] Add dashboard settings and customisation
-- [ ] Improve app launch and fallback handling
-- [ ] Add screenshots and demonstrations
-- [ ] Test across supported Android devices and Android Auto environments
+## 📄 License
 
-🧪 Testing
-
-Before considering a feature complete:
-
-- Test the dashboard on a physical Android device.
-- Check that app shortcuts open correctly.
-- Test missing-app and network-error scenarios.
-- Test Android Auto media browsing on compatible hardware or the Desktop Head Unit.
-- Verify that changes do not interfere with Android Auto's safety requirements.
-
-🤝 Contributing
-
-Suggestions, bug reports, and improvements are welcome.
-
-When proposing changes, please include:
-
-- A clear description of the improvement
-- Steps to reproduce any reported bug
-- Relevant screenshots or logs, when available
-- Testing performed
-
-🛡️ Safety Notice
-
-DriveDeck is intended to be a driving companion, not a distraction.
-
-- Follow local traffic laws.
-- Avoid interacting with your phone while driving.
-- Use voice controls where appropriate.
-- Use video features only when safely parked and permitted by applicable rules.
-- Respect Android Auto's app compatibility and driving-safety restrictions.
-
-📄 License
-
-No license has been specified yet.
-
-Until a license is added, assume that the project is not licensed for redistribution or reuse beyond the permissions granted by applicable law.
+No license has been specified yet. Until a license is added, assume that the project is not licensed for redistribution or reuse beyond permissions granted by applicable law.
 
 ---
 
-<div align="center">🚗 DriveDeck
+<div align="center">
 
-Designed for the drive. Built with Kotlin.
+**Designed for the drive. Built with Kotlin.**
 
-Created with ❤️ by "FrdsArff" (https://github.com/frdsarff)
+Created with ❤️ by [FrdsArff](https://github.com/frdsarff)
 
 <sub>Early-stage project · Features and documentation may change.</sub>
 
