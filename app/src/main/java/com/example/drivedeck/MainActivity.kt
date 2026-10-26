@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                 if (isHeadUnit) {
                     DriveDeckApp { url, packageName -> openAppOrWeb(url, packageName) }
                 } else {
-                    PhoneSettingsScreen(onOpenNotificationSettings = {
+                    PhoneApp(onOpenNotificationSettings = {
                         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     })
                 }
@@ -107,8 +107,112 @@ class MainActivity : ComponentActivity() {
 private enum class DeckPage { HOME, PLAYER }
 
 
+
+private enum class PhonePage { DASHBOARD, SETTINGS }
+
 @Composable
-private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit) {
+private fun PhoneApp(onOpenNotificationSettings: () -> Unit) {
+    var page by remember { mutableStateOf(PhonePage.DASHBOARD) }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("drivedeck_phone_settings", android.content.Context.MODE_PRIVATE) }
+    var appearance by remember { mutableStateOf(prefs.getString("appearance", "Dark") ?: "Dark") }
+    var language by remember { mutableStateOf(prefs.getString("language", "English") ?: "English") }
+    val isLight = appearance == "Light" || (appearance == "System" && !androidx.compose.foundation.isSystemInDarkTheme())
+    val bg = if (isLight) Color(0xFFF5F6FA) else Color(0xFF0D101A)
+    val panel = if (isLight) Color.White else Color(0xFF1B1E29)
+    val text = if (isLight) Color(0xFF191B24) else Color(0xFFF7F7F7)
+    val muted = if (isLight) Color(0xFF646875) else Color(0xFFA4AAB5)
+    val bm = language == "Bahasa Melayu"
+
+    if (page == PhonePage.SETTINGS) {
+        PhoneSettingsScreen(onOpenNotificationSettings = onOpenNotificationSettings, onBack = { page = PhonePage.DASHBOARD })
+    } else {
+        MaterialTheme(colorScheme = if (isLight) lightColorScheme(
+            primary = Color(0xFF26CDB5), background = bg, surface = panel, onBackground = text, onSurface = text
+        ) else darkColorScheme(
+            primary = Color(0xFF26CDB5), background = bg, surface = panel, onBackground = text, onSurface = text
+        )) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().background(bg),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
+                item {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(if (bm) "Papan pemuka" else "Dashboard", color = text, fontSize = 30.sp, fontWeight = FontWeight.Medium)
+                        Surface(onClick = { page = PhonePage.SETTINGS }, shape = CircleShape, color = panel,
+                            border = BorderStroke(1.dp, text.copy(alpha = 0.08f))) {
+                            Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
+                                Text("☷", color = text, fontSize = 26.sp)
+                            }
+                        }
+                    }
+                }
+                item {
+                    Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), color = Color.Transparent,
+                        border = BorderStroke(1.dp, Color(0xFF26CDB5).copy(alpha = 0.20f))) {
+                        Box(Modifier.background(Brush.linearGradient(listOf(Color(0xFF125D5B), Color(0xFF101B2B), Color(0xFF123C40)))).padding(24.dp)) {
+                            Column {
+                                Text(if (bm) "Selamat datang ke" else "Welcome to", color = Color.White.copy(alpha = 0.72f), fontSize = 15.sp)
+                                Spacer(Modifier.height(5.dp))
+                                Text("DriveDeck", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(8.dp))
+                                Text(if (bm) "Teman pemanduan dan muzik anda" else "Your driving and music companion", color = Color.White.copy(alpha = 0.82f), fontSize = 14.sp)
+                            }
+                        }
+                    }
+                }
+                item {
+                    Text(if (bm) "Akses pantas" else "Quick settings", color = text, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PhoneDashboardCard(if (bm) "Penampilan" else "Appearance", appearance, "◐", Modifier.weight(1f), panel, text, muted) { page = PhonePage.SETTINGS }
+                        PhoneDashboardCard(if (bm) "Lirik" else "Lyrics", if (bm) "Sumber lirik & akses" else "Lyrics source & access", "♫", Modifier.weight(1f), panel, text, muted) { page = PhonePage.SETTINGS }
+                    }
+                }
+                item {
+                    Text(if (bm) "Aplikasi" else "Apps", color = text, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PhoneDashboardCard(if (bm) "Lirik" else "Lyrics", if (bm) "Tetapan sync lirik" else "Lyrics sync settings", "♫", Modifier.fillMaxWidth(), panel, text, muted) { page = PhonePage.SETTINGS }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            PhoneDashboardCard(if (bm) "Paparan kereta" else "Car display", if (bm) "Tetapan head unit" else "Head unit settings", "▣", Modifier.weight(1f), panel, text, muted) { page = PhonePage.SETTINGS }
+                            PhoneDashboardCard(if (bm) "Tetapan" else "Settings", if (bm) "Konfigurasi DriveDeck" else "Configure DriveDeck", "⚙", Modifier.weight(1f), panel, text, muted) { page = PhonePage.SETTINGS }
+                        }
+                    }
+                }
+                item {
+                    Text(if (bm) "Dashboard head unit berasingan daripada app telefon." else "The head unit dashboard is separate from the phone app.", color = muted, fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhoneDashboardCard(
+    title: String, subtitle: String, icon: String, modifier: Modifier,
+    panel: Color, text: Color, muted: Color, onClick: () -> Unit
+) {
+    Card(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = panel),
+        border = BorderStroke(1.dp, text.copy(alpha = 0.07f))) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Surface(shape = RoundedCornerShape(14.dp), color = Color(0x3326CDB5)) {
+                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    Text(icon, color = Color(0xFF26CDB5), fontSize = 24.sp)
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(title, color = text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(3.dp))
+                Text(subtitle, color = muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("drivedeck_phone_settings", android.content.Context.MODE_PRIVATE) }
     var appearance by remember { mutableStateOf(prefs.getString("appearance", "Dark") ?: "Dark") }
@@ -141,7 +245,7 @@ private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit) {
                 Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("‹", color = textColor, fontSize = 32.sp)
+                Text("‹", color = textColor, fontSize = 32.sp, modifier = Modifier.clickable(onClick = onBack))
                 Spacer(Modifier.width(18.dp))
                 Text(if (bm) "Tetapan" else "Settings", color = textColor, fontSize = 23.sp, fontWeight = FontWeight.Medium)
             }
