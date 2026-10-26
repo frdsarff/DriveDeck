@@ -205,8 +205,15 @@ private class LyricsScreen(
             )
             .build()
 
+        val screenTitle = when {
+            np.title.isNotBlank() && np.artist.isNotBlank() ->
+                "${np.title} • ${np.artist}"
+            np.title.isNotBlank() -> np.title
+            else -> "DriveDeck Lyrics"
+        }
+
         return PaneTemplate.Builder(pane.build())
-            .setTitle("DriveDeck Lyrics")
+            .setTitle(screenTitle)
             .setHeaderAction(Action.APP_ICON)
             .setActionStrip(controls)
             .build()
