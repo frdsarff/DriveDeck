@@ -3,7 +3,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
 
     <queries>
         <package android:name="com.spotify.music" />
@@ -49,23 +48,18 @@
         </service>
 
         <service
-    android:name=".car.LyricsCarAppService"
-    android:exported="true"
-    android:permission="androidx.car.app.BIND_CAR_APP"
-    android:label="DriveDeck Lyrics">
-
-    <intent-filter>
-        <action android:name="androidx.car.app.CarAppService" />
-    </intent-filter>
-
-    <meta-data
-        android:name="androidx.car.app.minCarApiLevel"
-        android:value="1" />
-
-    <meta-data
-        android:name="androidx.car.app.category"
-        android:value="IOT" />
-</service>
+            android:name=".car.LyricsCarAppService"
+            android:exported="true"
+            android:permission="androidx.car.app.BIND_CAR_APP"
+            android:label="DriveDeck Lyrics">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.MEDIA" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.car.app.minCarApiLevel"
+                android:value="1" />
+        </service>
 
         <meta-data
             android:name="com.google.android.gms.car.application"
