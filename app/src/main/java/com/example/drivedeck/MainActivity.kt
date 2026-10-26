@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -169,12 +170,26 @@ private fun HomeDashboard(np: NowPlaying, openApp: (String, String?) -> Unit, on
         }
 
         Column(Modifier.weight(1.35f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.weight(0.82f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                DashboardTile("PLAYER", if (np.title.isBlank()) "Buka player lirik" else np.title, Modifier.weight(1f).fillMaxHeight(), onOpenPlayer)
+                DashboardTile("SHORTCUTS", "Apps & web", Modifier.weight(1f).fillMaxHeight()) {
+                    openApp("https://www.youtube.com", null)
+                }
+            }
             Row(Modifier.weight(1.15f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 EntertainmentTile("YouTube Web", "Video & music", "▶", Modifier.weight(1f).fillMaxHeight()) {
                     openApp("https://www.youtube.com", null)
                 }
                 EntertainmentTile("RTMKlik", "TV & radio", "▣", Modifier.weight(1f).fillMaxHeight()) {
                     openApp("https://rtmklik.rtm.gov.my", null)
+                }
+            }
+            Row(Modifier.weight(0.72f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                DashboardTile("SPOTIFY", "Open app", Modifier.weight(1f).fillMaxHeight()) {
+                    openApp("https://open.spotify.com", "com.spotify.music")
+                }
+                DashboardTile("YOUTUBE MUSIC", "Open app", Modifier.weight(1f).fillMaxHeight()) {
+                    openApp("https://music.youtube.com", "com.google.android.apps.youtube.music")
                 }
             }
         }
