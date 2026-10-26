@@ -2,7 +2,8 @@ package com.example.drivedeck
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.provider.Settings
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
@@ -51,7 +52,9 @@ private val Mint = Color(0xFF62E6C0)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        val isHeadUnit = resources.configuration.smallestScreenWidthDp >= 600 ||
+            packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)
+        if (isHeadUnit) requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.BLACK
         window.decorView.systemUiVisibility =
@@ -66,7 +69,13 @@ class MainActivity : ComponentActivity() {
                     onBackground = White, onSurface = White
                 )
             ) {
-                DriveDeckApp { url, packageName -> openAppOrWeb(url, packageName) }
+                if (isHeadUnit) {
+                    DriveDeckApp { url, packageName -> openAppOrWeb(url, packageName) }
+                } else {
+                    PhoneSettingsScreen(onOpenNotificationSettings = {
+                        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                    })
+                }
             }
         }
     }
@@ -96,6 +105,132 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class DeckPage { HOME, PLAYER }
+
+
+@Composable
+private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit) {
+    var appearance by remember { mutableStateOf("Dark") }
+    var language by remember { mutableStateOf("Phone language") }
+    val context = LocalContext.current
+    val hasNotificationAccess = remember {
+        android.provider.Settings.Secure.getString(
+            context.contentResolver,
+            "enabled_notification_listeners"
+        )?.contains(context.packageName) == true
+    }
+
+    Column(
+        Modifier.fillMaxSize().background(Color(0xFF0D101A))
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("‹", color = White, fontSize = 32.sp)
+            Spacer(Modifier.width(18.dp))
+            Text("Settings", color = White, fontSize = 23.sp, fontWeight = FontWeight.Medium)
+        }
+        androidx.compose.foundation.lazy.LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            item {
+                SettingsSectionTitle("Appearance")
+                SettingsPanel {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Dark", "Light", "System").forEach { option ->
+                            FilterChip(
+                                selected = appearance == option,
+                                onClick = { appearance = option },
+                                label = { Text(option) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                SettingsSectionTitle("Language")
+                SettingsPanel {
+                    listOf("Phone language", "English", "Bahasa Melayu", "中文", "தமிழ்").forEach { option ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { language = option }.padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = language == option, onClick = { language = option })
+                            Spacer(Modifier.width(12.dp))
+                            Text(option, color = White, fontSize = 16.sp)
+                        }
+                    }
+                }
+            }
+            item {
+                SettingsSectionTitle("Lyrics")
+                SettingsPanel {
+                    Row(
+                        Modifier.fillMaxWidth().clickable(onClick = onOpenNotificationSettings).padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(if (hasNotificationAccess) "✓" else "!", color = Mint, fontSize = 24.sp)
+                        Spacer(Modifier.width(16.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Notification access", color = White, fontSize = 17.sp)
+                            Text(
+                                if (hasNotificationAccess) "Granted" else "Tap to grant access",
+                                color = Muted, fontSize = 14.sp
+                            )
+                        }
+                        Text("↗", color = Muted, fontSize = 22.sp)
+                    }
+                    HorizontalDivider(color = White.copy(alpha = 0.12f))
+                    Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Default lyrics source", color = White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                        Text("Auto  ▾", color = Muted, fontSize = 15.sp)
+                    }
+                }
+            }
+            item {
+                SettingsSectionTitle("Car display")
+                SettingsPanel {
+                    Text("Car home background", color = White, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Dashboard appearance settings will be available here.", color = Muted, fontSize = 14.sp)
+                    Spacer(Modifier.height(18.dp))
+                    Text("Car card", color = White, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(6.dp))
+                    Text("DriveDeck dashboard and player stay on the head unit.", color = Muted, fontSize = 14.sp)
+                }
+            }
+            item {
+                SettingsSectionTitle("About")
+                SettingsPanel {
+                    Text("DriveDeck", color = White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Phone settings • Head unit dashboard", color = Muted, fontSize = 14.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSectionTitle(title: String) {
+    Text(title, color = White, fontSize = 19.sp, fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(start = 4.dp, bottom = 10.dp))
+}
+
+@Composable
+private fun SettingsPanel(content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        color = Color(0xFF1B1E29),
+        border = BorderStroke(1.dp, White.copy(alpha = 0.07f))
+    ) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), content = content)
+    }
+}
 
 @Composable
 private fun DriveDeckApp(openApp: (String, String?) -> Unit) {
