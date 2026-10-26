@@ -14,7 +14,6 @@ import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.example.drivedeck.bridge.MediaBridge
-import com.example.drivedeck.bridge.NowPlaying
 import com.example.drivedeck.lyrics.LyricLine
 import com.example.drivedeck.lyrics.LyricsRepository
 import com.google.common.collect.ImmutableList
@@ -116,24 +115,15 @@ class PlaybackService : MediaLibraryService() {
 
         private var lyricLine: String? = null
 
-        private var anchorNp: NowPlaying? = null
-        private var anchorAt = 0L
-
-        /** Posisi lagu sekarang, dianggar dari update terakhir bridge. */
+        /** Posisi lagu sekarang, dikira dari masa update terakhir bridge (jam sama dengan kad phone). */
         fun estimatedPositionMs(): Long {
             val np = MediaBridge.state.value
-            val now = SystemClock.elapsedRealtime()
-            if (np !== anchorNp) {
-                anchorNp = np
-                anchorAt = now
-            }
-            val extra = if (np.isPlaying) now - anchorAt else 0L
+            val extra = if (np.isPlaying) SystemClock.elapsedRealtime() - np.updatedAt else 0L
             val pos = np.positionMs + extra
             return if (np.durationMs > 0) pos.coerceAtMost(np.durationMs) else pos
         }
 
         fun refresh() {
-            estimatedPositionMs()
             invalidateState()
         }
 
