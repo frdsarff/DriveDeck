@@ -166,7 +166,7 @@ class PlaybackService : MediaLibraryService() {
             val art = artworkFor(key, np.artwork)
 
             val lyric = lyricLine?.trim().orEmpty()
-            val subtitle = if (SHOW_LYRICS_ON_CAR && lyric.isNotEmpty()) lyric else np.artist
+            val showLyric = SHOW_LYRICS_ON_CAR && lyric.isNotEmpty()
 
             val metadata = MediaMetadata.Builder()
                 .setTitle(np.title)
