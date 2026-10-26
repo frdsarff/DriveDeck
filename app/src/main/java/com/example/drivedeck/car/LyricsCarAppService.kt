@@ -1,8 +1,8 @@
-
 package com.example.drivedeck.car
 
 import android.content.Intent
 import android.os.SystemClock
+import android.util.Log
 import androidx.car.app.CarAppService
 import androidx.car.app.Screen
 import androidx.car.app.Session
@@ -24,81 +24,91 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+private const val TAG = "DriveDeckCarLyrics"
+
+/**
+ * Dedicated Android Auto template app for synchronized lyrics.
+ * Kept separate from PlaybackService: the media browser handles playback,
+ * while this CarAppService owns the lyrics UI.
+ */
 class LyricsCarAppService : CarAppService() {
+    override fun createHostValidator(): HostValidator =
+        HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
 
-    override fun createHostValidator(): HostValidator {
-        // Untuk ujian sideload/developer sahaja.
-        return HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
+    override fun onCreateSession(): Session {
+        Log.i(TAG, "Lyrics CarAppService session requested")
+        return LyricsSession()
     }
-
-    override fun onCreateSession(): Session = LyricsSession()
 }
 
-
 private class LyricsSession : Session() {
-
     override fun onCreateScreen(intent: Intent): Screen {
+        Log.i(TAG, "Creating DriveDeck Lyrics screen")
         return LyricsScreen(carContext)
     }
 }
 
-
-
 private class LyricsScreen(
     carContext: androidx.car.app.CarContext
 ) : Screen(carContext) {
-
-    private val scope =
-        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var trackKey: String? = null
     private var lyrics: List<LyricLine> = emptyList()
     private var loading = false
+    private var errorMessage: String? = null
     private var lastRenderedIndex = Int.MIN_VALUE
 
     init {
+        Log.i(TAG, "LyricsScreen initialized")
         MediaBridge.start(carContext)
 
-        // Pantau lagu semasa dan dapatkan lirik apabila lagu berubah.
         scope.launch {
-            MediaBridge.state.collect { np ->
-                val newKey =
-                    "${np.packageName}|${np.title}|${np.artist}"
+            MediaBridge.state.collect { nowPlaying ->
+                val key = "${nowPlaying.packageName}|${nowPlaying.title}|${nowPlaying.artist}"
+                if (key == trackKey) return@collect
 
-                if (newKey != trackKey) {
-                    trackKey = newKey
-                    lyrics = emptyList()
-                    loading = np.title.isNotBlank()
-                    lastRenderedIndex = Int.MIN_VALUE
-                    invalidate()
+                trackKey = key
+                lyrics = emptyList()
+                errorMessage = null
+                loading = nowPlaying.title.isNotBlank()
+                lastRenderedIndex = Int.MIN_VALUE
+                Log.i(TAG, "Track changed: title='${nowPlaying.title}', artist='${nowPlaying.artist}', access=${nowPlaying.hasAccess}")
+                invalidate()
 
-                    if (np.title.isNotBlank()) {
-                        launch {
-                            val result = LyricsRepository.load(
-                                np.title,
-                                np.artist,
-                                np.durationMs
-                            )
-
-                            if (trackKey == newKey) {
-                                lyrics = result
-                                loading = false
-                                lastRenderedIndex = Int.MIN_VALUE
-                                invalidate()
-                            }
-                        }
+                if (nowPlaying.title.isBlank()) {
+                    loading = false
+                    errorMessage = if (nowPlaying.hasAccess) {
+                        "Mainkan lagu dalam Spotify atau YouTube Music"
                     } else {
+                        "Benarkan akses notifikasi DriveDeck pada telefon"
+                    }
+                    invalidate()
+                    return@collect
+                }
+
+                launch {
+                    val found = LyricsRepository.load(
+                        nowPlaying.title,
+                        nowPlaying.artist,
+                        nowPlaying.durationMs
+                    )
+                    if (trackKey == key) {
+                        lyrics = found
                         loading = false
+                        errorMessage = if (found.isEmpty()) {
+                            "Lirik terselaras tidak ditemui untuk lagu ini"
+                        } else null
+                        Log.i(TAG, "Lyrics result: ${found.size} lines")
+                        lastRenderedIndex = Int.MIN_VALUE
+                        invalidate()
                     }
                 }
             }
         }
 
-        // Kemas kini paparan apabila baris lirik berubah.
         scope.launch {
             while (isActive) {
-                delay(250L)
-
+                delay(500L)
                 val index = currentLyricIndex()
                 if (index != lastRenderedIndex) {
                     lastRenderedIndex = index
@@ -109,135 +119,68 @@ private class LyricsScreen(
     }
 
     override fun onGetTemplate(): Template {
-        val np = MediaBridge.state.value
+        val nowPlaying = MediaBridge.state.value
         val pane = Pane.Builder()
 
+        pane.addRow(Row.Builder().setTitle(nowPlaying.title.ifBlank { "Tiada lagu dikesan" }).build())
+        if (nowPlaying.artist.isNotBlank()) {
+            pane.addRow(Row.Builder().setTitle(nowPlaying.artist).build())
+        }
+
         when {
-            np.title.isBlank() -> {
-                pane.addRow(
-                    Row.Builder()
-                        .setTitle("Buka Spotify atau YouTube Music")
-                        .build()
-                )
-                pane.addRow(
-                    Row.Builder()
-                        .setTitle("DriveDeck akan mengesan lagu semasa")
-                        .build()
-                )
-            }
-
-            loading -> {
-                pane.addRow(
-                    Row.Builder()
-                        .setTitle(np.title)
-                        .build()
-                )
-                pane.addRow(
-                    Row.Builder()
-                        .setTitle("Sedang mencari lirik terselaras...")
-                        .build()
-                )
-            }
-
-            lyrics.isEmpty() -> {
-                pane.addRow(
-                    Row.Builder()
-                        .setTitle(np.title)
-                        .build()
-                )
-                pane.addRow(
-                    Row.Builder()
-                        .setTitle("Lirik terselaras tidak ditemui")
-                        .build()
-                )
-            }
-
+            loading -> pane.addRow(Row.Builder().setTitle("Sedang mencari lirik terselaras…").build())
+            lyrics.isEmpty() -> pane.addRow(
+                Row.Builder().setTitle(errorMessage ?: "Lirik belum tersedia").build()
+            )
             else -> {
-                val center = currentLyricIndex()
-                    .coerceIn(0, lyrics.lastIndex)
-
+                val center = currentLyricIndex().coerceIn(0, lyrics.lastIndex)
                 val start = (center - 1).coerceAtLeast(0)
                 val end = (center + 2).coerceAtMost(lyrics.lastIndex)
-
-                for (i in start..end) {
-                    val text = lyrics[i].text.ifBlank { "♪" }
-                    val display = if (i == center) {
-                        "▶  $text"
-                    } else {
-                        text
-                    }
-
+                for (index in start..end) {
+                    val line = lyrics[index].text.ifBlank { "♪" }
                     pane.addRow(
                         Row.Builder()
-                            .setTitle(display)
+                            .setTitle(if (index == center) "▶  $line" else line)
                             .build()
                     )
                 }
             }
         }
 
-        val controls = ActionStrip.Builder()
+        val actions = ActionStrip.Builder()
+            .addAction(Action.Builder().setTitle("Previous").setOnClickListener { MediaBridge.previous() }.build())
             .addAction(
                 Action.Builder()
-                    .setTitle("Previous")
-                    .setOnClickListener {
-                        MediaBridge.previous()
-                    }
+                    .setTitle(if (nowPlaying.isPlaying) "Pause" else "Play")
+                    .setOnClickListener { MediaBridge.togglePlayPause() }
                     .build()
             )
-            .addAction(
-                Action.Builder()
-                    .setTitle(
-                        if (np.isPlaying) "Pause" else "Play"
-                    )
-                    .setOnClickListener {
-                        MediaBridge.togglePlayPause()
-                    }
-                    .build()
-            )
-            .addAction(
-                Action.Builder()
-                    .setTitle("Next")
-                    .setOnClickListener {
-                        MediaBridge.next()
-                    }
-                    .build()
-            )
+            .addAction(Action.Builder().setTitle("Next").setOnClickListener { MediaBridge.next() }.build())
             .build()
 
         return PaneTemplate.Builder(pane.build())
             .setTitle("DriveDeck Lyrics")
             .setHeaderAction(Action.APP_ICON)
-            .setActionStrip(controls)
+            .setActionStrip(actions)
             .build()
     }
 
     private fun currentLyricIndex(): Int {
         if (lyrics.isEmpty()) return -1
-
-        val np = MediaBridge.state.value
-
-        val elapsed = if (np.isPlaying) {
-            (SystemClock.elapsedRealtime() - np.updatedAt)
-                .coerceAtLeast(0L)
-        } else {
-            0L
-        }
-
-        val position = np.positionMs + elapsed
-        val safePosition = if (np.durationMs > 0) {
-            position.coerceAtMost(np.durationMs)
-        } else {
-            position
-        }
-
-        return lyrics.indexOfLast {
-            it.timeMs <= safePosition + 300L
-        }.coerceAtLeast(0)
+        val nowPlaying = MediaBridge.state.value
+        val elapsed = if (nowPlaying.isPlaying) {
+            (SystemClock.elapsedRealtime() - nowPlaying.updatedAt).coerceAtLeast(0L)
+        } else 0L
+        val position = nowPlaying.positionMs + elapsed
+        val safePosition = if (nowPlaying.durationMs > 0) {
+            position.coerceAtMost(nowPlaying.durationMs)
+        } else position
+        return lyrics.indexOfLast { it.timeMs <= safePosition + 300L }.coerceAtLeast(0)
     }
 
-    // Dipanggil oleh LyricsSession apabila sesi ditutup.
-    fun dispose() {
+    override fun onDestroy() {
+        Log.i(TAG, "LyricsScreen destroyed")
         scope.cancel()
+        super.onDestroy()
     }
 }
