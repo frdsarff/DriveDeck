@@ -112,16 +112,35 @@ private class LyricsScreen(
         val np = MediaBridge.state.value
         val pane = Pane.Builder()
 
+        // Keep the car-safe PaneTemplate, but make the limited space work harder:
+        // one compact track-info row plus up to three synchronized lyric rows.
+        if (np.title.isNotBlank()) {
+            val trackInfo = buildString {
+                append(np.title)
+                if (np.artist.isNotBlank()) append("  •  ").append(np.artist)
+                if (np.appName.isNotBlank()) append("  ·  ").append(np.appName)
+            }
+            pane.addRow(Row.Builder().setTitle(trackInfo).build())
+        }
+
         when {
+            !np.hasAccess -> {
+                pane.addRow(
+                    Row.Builder()
+                        .setTitle("Benarkan akses notifikasi untuk mengesan muzik")
+                        .build()
+                )
+            }
+
             np.title.isBlank() -> {
                 pane.addRow(
                     Row.Builder()
-                        .setTitle("Buka Spotify atau YouTube Music")
+                        .setTitle("Mainkan lagu di Spotify atau YouTube Music")
                         .build()
                 )
                 pane.addRow(
                     Row.Builder()
-                        .setTitle("DriveDeck akan mengesan lagu semasa")
+                        .setTitle("DriveDeck akan memaparkan lirik di sini")
                         .build()
                 )
             }
@@ -129,22 +148,12 @@ private class LyricsScreen(
             loading -> {
                 pane.addRow(
                     Row.Builder()
-                        .setTitle(np.title)
-                        .build()
-                )
-                pane.addRow(
-                    Row.Builder()
-                        .setTitle("Sedang mencari lirik terselaras...")
+                        .setTitle("Sedang mencari lirik terselaras…")
                         .build()
                 )
             }
 
             lyrics.isEmpty() -> {
-                pane.addRow(
-                    Row.Builder()
-                        .setTitle(np.title)
-                        .build()
-                )
                 pane.addRow(
                     Row.Builder()
                         .setTitle("Lirik terselaras tidak ditemui")
@@ -153,25 +162,14 @@ private class LyricsScreen(
             }
 
             else -> {
-                val center = currentLyricIndex()
-                    .coerceIn(0, lyrics.lastIndex)
-
+                val center = currentLyricIndex().coerceIn(0, lyrics.lastIndex)
                 val start = (center - 1).coerceAtLeast(0)
-                val end = (center + 2).coerceAtMost(lyrics.lastIndex)
+                val end = (center + 1).coerceAtMost(lyrics.lastIndex)
 
                 for (i in start..end) {
-                    val text = lyrics[i].text.ifBlank { "♪" }
-                    val display = if (i == center) {
-                        "▶  $text"
-                    } else {
-                        text
-                    }
-
-                    pane.addRow(
-                        Row.Builder()
-                            .setTitle(display)
-                            .build()
-                    )
+                    val line = lyrics[i].text.ifBlank { "♪" }
+                    val display = if (i == center) "▶  $line" else line
+                    pane.addRow(Row.Builder().setTitle(display).build())
                 }
             }
         }
@@ -180,40 +178,25 @@ private class LyricsScreen(
             .addAction(
                 Action.Builder()
                     .setTitle("Previous")
-                    .setOnClickListener {
-                        MediaBridge.previous()
-                    }
+                    .setOnClickListener { MediaBridge.previous() }
                     .build()
             )
             .addAction(
                 Action.Builder()
-                    .setTitle(
-                        if (np.isPlaying) "Pause" else "Play"
-                    )
-                    .setOnClickListener {
-                        MediaBridge.togglePlayPause()
-                    }
+                    .setTitle(if (np.isPlaying) "Pause" else "Play")
+                    .setOnClickListener { MediaBridge.togglePlayPause() }
                     .build()
             )
             .addAction(
                 Action.Builder()
                     .setTitle("Next")
-                    .setOnClickListener {
-                        MediaBridge.next()
-                    }
+                    .setOnClickListener { MediaBridge.next() }
                     .build()
             )
             .build()
 
-        val screenTitle = when {
-            np.title.isNotBlank() && np.artist.isNotBlank() ->
-                "${np.title} • ${np.artist}"
-            np.title.isNotBlank() -> np.title
-            else -> "DriveDeck Lyrics"
-        }
-
         return PaneTemplate.Builder(pane.build())
-            .setTitle(screenTitle)
+            .setTitle("DriveDeck Lyrics")
             .setHeaderAction(Action.APP_ICON)
             .setActionStrip(controls)
             .build()
