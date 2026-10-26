@@ -34,6 +34,6 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.8.0")
     implementation("androidx.media3:media3-session:1.8.0")
     implementation("com.google.guava:guava:33.4.8-android")
-    implementation("androidx.car.app:app:1.7.0")
+    implementation("androidx.car.app:app:1.8.0-rc01")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
