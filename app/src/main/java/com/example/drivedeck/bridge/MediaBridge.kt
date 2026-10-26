@@ -8,6 +8,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,16 +23,10 @@ data class NowPlaying(
     val artist: String = "",
     val artwork: Bitmap? = null,
     val isPlaying: Boolean = false,
-    val durationMs: Long = 0L
+    val durationMs: Long = 0L,
+    val positionMs: Long = 0L
 )
 
-/**
- * Reads the active media session of other apps (Spotify, YouTube Music, etc.)
- * and forwards play/pause/next/previous to them.
- *
- * Requires Notification Listener access (user grants once in system settings).
- * Call start() from the main thread (MainActivity.onResume is fine).
- */
 object MediaBridge {
 
     private val KNOWN_APPS = mapOf(
@@ -39,8 +34,6 @@ object MediaBridge {
         "com.google.android.apps.youtube.music" to "YouTube Music",
         "com.google.android.youtube" to "YouTube"
     )
-
-    // When nothing is playing, prefer these over random sessions.
     private val PREFERRED = listOf(
         "com.spotify.music",
         "com.google.android.apps.youtube.music"
@@ -105,6 +98,10 @@ object MediaBridge {
 
     // ---- Controls -------------------------------------------------------
 
+    fun play() { active?.transportControls?.play() }
+
+    fun pause() { active?.transportControls?.pause() }
+
     fun togglePlayPause() {
         val c = active ?: return
         if (c.playbackState?.state == PlaybackState.STATE_PLAYING) {
@@ -117,6 +114,8 @@ object MediaBridge {
     fun next() { active?.transportControls?.skipToNext() }
 
     fun previous() { active?.transportControls?.skipToPrevious() }
+
+    fun seekTo(positionMs: Long) { active?.transportControls?.seekTo(positionMs) }
 
     // ---- Internals ------------------------------------------------------
 
@@ -159,6 +158,15 @@ object MediaBridge {
         val md = c.metadata
         val ps = c.playbackState
         val pkg = c.packageName
+        val duration = md?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+
+        var position = ps?.position ?: 0L
+        if (ps != null && ps.state == PlaybackState.STATE_PLAYING && ps.lastPositionUpdateTime > 0) {
+            position += ((SystemClock.elapsedRealtime() - ps.lastPositionUpdateTime) *
+                    ps.playbackSpeed).toLong()
+        }
+        position = position.coerceAtLeast(0L)
+        if (duration > 0) position = position.coerceAtMost(duration)
 
         _state.value = NowPlaying(
             hasAccess = true,
@@ -171,7 +179,8 @@ object MediaBridge {
                 ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: md?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON),
             isPlaying = ps?.state == PlaybackState.STATE_PLAYING,
-            durationMs = md?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+            durationMs = duration,
+            positionMs = position
         )
     }
 
