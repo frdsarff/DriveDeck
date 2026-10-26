@@ -169,8 +169,8 @@ class PlaybackService : MediaLibraryService() {
             val showLyric = SHOW_LYRICS_ON_CAR && lyric.isNotEmpty()
 
             val metadata = MediaMetadata.Builder()
-                .setTitle(np.title)
-                .setArtist(subtitle)
+                .setTitle(if (showLyric) lyric else np.title)
+                .setArtist(if (showLyric) "${np.title} • ${np.artist}" else np.artist)
                 .setAlbumArtist(np.artist)
                 .setAlbumTitle(np.appName)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
