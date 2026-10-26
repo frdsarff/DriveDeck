@@ -49,23 +49,20 @@
         </service>
 
         <service
-    android:name=".car.LyricsCarAppService"
-    android:exported="true"
-    android:permission="androidx.car.app.BIND_CAR_APP"
-    android:label="DriveDeck Lyrics">
-
-    <intent-filter>
-        <action android:name="androidx.car.app.CarAppService" />
-    </intent-filter>
-
-    <meta-data
-        android:name="androidx.car.app.minCarApiLevel"
-        android:value="1" />
-
-    <meta-data
-        android:name="androidx.car.app.category"
-        android:value="IOT" />
-</service>
+            android:name=".car.LyricsCarAppService"
+            android:exported="true"
+            android:permission="androidx.car.app.BIND_CAR_APP"
+            android:label="DriveDeck Lyrics">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.car.app.minCarApiLevel"
+                android:value="1" />
+            <meta-data
+                android:name="androidx.car.app.category"
+                android:value="MEDIA" />
+        </service>
 
         <meta-data
             android:name="com.google.android.gms.car.application"
