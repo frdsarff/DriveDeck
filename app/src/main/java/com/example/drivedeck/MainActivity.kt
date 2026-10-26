@@ -109,105 +109,155 @@ private enum class DeckPage { HOME, PLAYER }
 
 @Composable
 private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit) {
-    var appearance by remember { mutableStateOf("Dark") }
-    var language by remember { mutableStateOf("Phone language") }
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("drivedeck_phone_settings", android.content.Context.MODE_PRIVATE) }
+    var appearance by remember { mutableStateOf(prefs.getString("appearance", "Dark") ?: "Dark") }
+    var language by remember { mutableStateOf(prefs.getString("language", "English") ?: "English") }
+    val isLight = appearance == "Light" ||
+        (appearance == "System" && androidx.compose.foundation.isSystemInDarkTheme().not())
+    val bg = if (isLight) Color(0xFFF5F6FA) else Color(0xFF0D101A)
+    val panel = if (isLight) Color(0xFFFFFFFF) else Color(0xFF1B1E29)
+    val textColor = if (isLight) Color(0xFF191B24) else Color(0xFFF7F7F7)
+    val mutedColor = if (isLight) Color(0xFF646875) else Color(0xFFA4AAB5)
+    val accent = Color(0xFF26CDB5)
+    val bm = language == "Bahasa Melayu"
     val hasNotificationAccess = remember {
         android.provider.Settings.Secure.getString(
-            context.contentResolver,
-            "enabled_notification_listeners"
+            context.contentResolver, "enabled_notification_listeners"
         )?.contains(context.packageName) == true
     }
 
-    Column(
-        Modifier.fillMaxSize().background(Color(0xFF0D101A))
+    MaterialTheme(
+        colorScheme = if (isLight) lightColorScheme(
+            primary = accent, onPrimary = Color.White, background = bg, surface = panel,
+            onBackground = textColor, onSurface = textColor
+        ) else darkColorScheme(
+            primary = accent, background = bg, surface = panel,
+            onBackground = textColor, onSurface = textColor
+        )
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("‹", color = White, fontSize = 32.sp)
-            Spacer(Modifier.width(18.dp))
-            Text("Settings", color = White, fontSize = 23.sp, fontWeight = FontWeight.Medium)
-        }
-        androidx.compose.foundation.lazy.LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            item {
-                SettingsSectionTitle("Appearance")
-                SettingsPanel {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("Dark", "Light", "System").forEach { option ->
-                            FilterChip(
-                                selected = appearance == option,
-                                onClick = { appearance = option },
-                                label = { Text(option) },
-                                modifier = Modifier.weight(1f)
-                            )
+        Column(Modifier.fillMaxSize().background(bg)) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("‹", color = textColor, fontSize = 32.sp)
+                Spacer(Modifier.width(18.dp))
+                Text(if (bm) "Tetapan" else "Settings", color = textColor, fontSize = 23.sp, fontWeight = FontWeight.Medium)
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                item {
+                    SettingsSectionTitle(if (bm) "Penampilan" else "Appearance", textColor)
+                    SettingsPanel(panel, textColor) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("Dark", "Light", "System").forEach { option ->
+                                FilterChip(
+                                    selected = appearance == option,
+                                    onClick = {
+                                        appearance = option
+                                        prefs.edit().putString("appearance", option).apply()
+                                    },
+                                    label = { Text(when (option) {
+                                        "Dark" -> if (bm) "Gelap" else "Dark"
+                                        "Light" -> if (bm) "Cerah" else "Light"
+                                        else -> if (bm) "Sistem" else "System"
+                                    }) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = accent.copy(alpha = if (isLight) 0.20f else 0.24f),
+                                        selectedLabelColor = textColor,
+                                        labelColor = mutedColor
+                                    )
+                                )
+                            }
                         }
                     }
                 }
-            }
-            item {
-                SettingsSectionTitle("Language")
-                SettingsPanel {
-                    listOf("Phone language", "English", "Bahasa Melayu", "中文", "தமிழ்").forEach { option ->
+                item {
+                    SettingsSectionTitle(if (bm) "Bahasa" else "Language", textColor)
+                    SettingsPanel(panel, textColor) {
+                        listOf("Phone language", "English", "Bahasa Melayu", "中文", "தமிழ்").forEach { option ->
+                            Row(
+                                Modifier.fillMaxWidth().clickable {
+                                    language = option
+                                    prefs.edit().putString("language", option).apply()
+                                }.padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = language == option,
+                                    onClick = {
+                                        language = option
+                                        prefs.edit().putString("language", option).apply()
+                                    }
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(option, color = textColor, fontSize = 16.sp)
+                            }
+                        }
+                    }
+                }
+                item {
+                    SettingsSectionTitle(if (bm) "Lirik" else "Lyrics", textColor)
+                    SettingsPanel(panel, textColor) {
                         Row(
-                            Modifier.fillMaxWidth().clickable { language = option }.padding(vertical = 10.dp),
+                            Modifier.fillMaxWidth().clickable(onClick = onOpenNotificationSettings).padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            RadioButton(selected = language == option, onClick = { language = option })
-                            Spacer(Modifier.width(12.dp))
-                            Text(option, color = White, fontSize = 16.sp)
+                            Text(if (hasNotificationAccess) "✓" else "!", color = accent, fontSize = 24.sp)
+                            Spacer(Modifier.width(16.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(if (bm) "Akses notifikasi" else "Notification access", color = textColor, fontSize = 17.sp)
+                                Text(
+                                    if (hasNotificationAccess) { if (bm) "Dibenarkan" else "Granted" }
+                                    else { if (bm) "Tekan untuk benarkan akses" else "Tap to grant access" },
+                                    color = mutedColor, fontSize = 14.sp
+                                )
+                            }
+                            Text("↗", color = mutedColor, fontSize = 22.sp)
+                        }
+                        HorizontalDivider(color = textColor.copy(alpha = 0.12f))
+                        Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(if (bm) "Sumber lirik lalai" else "Default lyrics source", color = textColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                            Text(if (bm) "Auto  ▾" else "Auto  ▾", color = mutedColor, fontSize = 15.sp)
                         }
                     }
                 }
-            }
-            item {
-                SettingsSectionTitle("Lyrics")
-                SettingsPanel {
-                    Row(
-                        Modifier.fillMaxWidth().clickable(onClick = onOpenNotificationSettings).padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(if (hasNotificationAccess) "✓" else "!", color = Mint, fontSize = 24.sp)
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("Notification access", color = White, fontSize = 17.sp)
-                            Text(
-                                if (hasNotificationAccess) "Granted" else "Tap to grant access",
-                                color = Muted, fontSize = 14.sp
-                            )
-                        }
-                        Text("↗", color = Muted, fontSize = 22.sp)
-                    }
-                    HorizontalDivider(color = White.copy(alpha = 0.12f))
-                    Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Default lyrics source", color = White, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        Text("Auto  ▾", color = Muted, fontSize = 15.sp)
+                item {
+                    SettingsSectionTitle(if (bm) "Paparan kereta" else "Car display", textColor)
+                    SettingsPanel(panel, textColor) {
+                        Text(if (bm) "Latar utama kereta" else "Car home background", color = textColor, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (bm) "Tetapan rupa dashboard akan ditambah kemudian."
+                            else "Dashboard appearance settings will be available here.",
+                            color = mutedColor, fontSize = 14.sp
+                        )
+                        Spacer(Modifier.height(18.dp))
+                        Text(if (bm) "Kad kereta" else "Car card", color = textColor, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (bm) "Dashboard dan player DriveDeck kekal pada head unit."
+                            else "DriveDeck dashboard and player stay on the head unit.",
+                            color = mutedColor, fontSize = 14.sp
+                        )
                     }
                 }
-            }
-            item {
-                SettingsSectionTitle("Car display")
-                SettingsPanel {
-                    Text("Car home background", color = White, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.height(6.dp))
-                    Text("Dashboard appearance settings will be available here.", color = Muted, fontSize = 14.sp)
-                    Spacer(Modifier.height(18.dp))
-                    Text("Car card", color = White, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.height(6.dp))
-                    Text("DriveDeck dashboard and player stay on the head unit.", color = Muted, fontSize = 14.sp)
-                }
-            }
-            item {
-                SettingsSectionTitle("About")
-                SettingsPanel {
-                    Text("DriveDeck", color = White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(4.dp))
-                    Text("Phone settings • Head unit dashboard", color = Muted, fontSize = 14.sp)
+                item {
+                    SettingsSectionTitle(if (bm) "Perihal" else "About", textColor)
+                    SettingsPanel(panel, textColor) {
+                        Text("DriveDeck", color = textColor, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            if (bm) "Tetapan telefon • Dashboard head unit"
+                            else "Phone settings • Head unit dashboard",
+                            color = mutedColor, fontSize = 14.sp
+                        )
+                    }
                 }
             }
         }
@@ -215,18 +265,18 @@ private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit) {
 }
 
 @Composable
-private fun SettingsSectionTitle(title: String) {
-    Text(title, color = White, fontSize = 19.sp, fontWeight = FontWeight.Medium,
+private fun SettingsSectionTitle(title: String, textColor: Color) {
+    Text(title, color = textColor, fontSize = 19.sp, fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(start = 4.dp, bottom = 10.dp))
 }
 
 @Composable
-private fun SettingsPanel(content: @Composable ColumnScope.() -> Unit) {
+private fun SettingsPanel(panelColor: Color, textColor: Color, content: @Composable ColumnScope.() -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(26.dp),
-        color = Color(0xFF1B1E29),
-        border = BorderStroke(1.dp, White.copy(alpha = 0.07f))
+        color = panelColor,
+        border = BorderStroke(1.dp, textColor.copy(alpha = 0.07f))
     ) {
         Column(Modifier.fillMaxWidth().padding(18.dp), content = content)
     }
