@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.drivedeck.bridge.MediaBridge
 import com.example.drivedeck.ui.LiveNowPlayingCard
+import com.example.drivedeck.ui.LyricsCard
 
 private val Ink = Color(0xFF080A0E)
 private val Panel = Color(0xFF171A20)
