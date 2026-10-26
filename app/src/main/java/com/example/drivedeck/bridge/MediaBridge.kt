@@ -24,7 +24,8 @@ data class NowPlaying(
     val artwork: Bitmap? = null,
     val isPlaying: Boolean = false,
     val durationMs: Long = 0L,
-    val positionMs: Long = 0L
+    val positionMs: Long = 0L,
+    val updatedAt: Long = android.os.SystemClock.elapsedRealtime()
 )
 
 object MediaBridge {
