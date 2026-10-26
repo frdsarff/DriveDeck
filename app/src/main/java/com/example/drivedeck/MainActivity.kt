@@ -1,8 +1,6 @@
-
 package com.example.drivedeck
 
 import android.content.ActivityNotFoundException
-import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -21,10 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
+import com.example.drivedeck.bridge.MediaBridge
+import com.example.drivedeck.ui.LiveNowPlayingCard
 
 private val Ink = Color(0xFF080A0E)
 private val Panel = Color(0xFF171A20)
@@ -55,6 +51,13 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Reconnect to Spotify / YouTube Music sessions (and pick up
+        // access just granted in system settings).
+        MediaBridge.start(this)
     }
 
     private fun openAppOrWeb(
@@ -99,92 +102,6 @@ class MainActivity : ComponentActivity() {
 private fun DriveDeckScreen(
     openApp: (String, String?) -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-
-    var controller by remember {
-        mutableStateOf<MediaController?>(null)
-    }
-
-    var isPlaying by remember { mutableStateOf(false) }
-    var trackTitle by remember { mutableStateOf("No track playing") }
-    var playerError by remember { mutableStateOf<String?>(null) }
-
-    val sessionToken = remember(context) {
-        SessionToken(
-            context,
-            ComponentName(context, PlaybackService::class.java)
-        )
-    }
-
-    val controllerFuture = remember(sessionToken) {
-        MediaController.Builder(context, sessionToken).buildAsync()
-    }
-
-    DisposableEffect(controllerFuture) {
-        controllerFuture.addListener(
-            {
-                try {
-                    controller = controllerFuture.get()
-                    playerError = null
-                } catch (e: Exception) {
-                    playerError = "Unable to connect to media player."
-                }
-            },
-            context.mainExecutor
-        )
-
-        onDispose {
-            val future = controllerFuture
-
-            if (future.isDone && !future.isCancelled) {
-                try {
-                    MediaController.releaseFuture(future)
-                } catch (_: Exception) {
-                    // Controller may already have been released.
-                }
-            } else {
-                future.cancel(false)
-            }
-        }
-    }
-
-    DisposableEffect(controller) {
-        val currentController = controller
-
-        val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(playing: Boolean) {
-                isPlaying = playing
-            }
-
-            override fun onMediaItemTransition(
-                mediaItem: MediaItem?,
-                reason: Int
-            ) {
-                trackTitle =
-                    mediaItem?.mediaMetadata?.title?.toString()
-                        ?: "No track playing"
-            }
-
-            override fun onPlayerError(
-                error: androidx.media3.common.PlaybackException
-            ) {
-                playerError = "Playback failed: ${error.errorCodeName}"
-            }
-        }
-
-        currentController?.addListener(listener)
-
-        isPlaying = currentController?.isPlaying == true
-        trackTitle =
-            currentController?.currentMediaItem
-                ?.mediaMetadata?.title?.toString()
-                ?: "No track playing"
-
-        onDispose {
-            currentController?.removeListener(listener)
-        }
-    }
-
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Ink
@@ -192,6 +109,8 @@ private fun DriveDeckScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
@@ -238,126 +157,12 @@ private fun DriveDeckScreen(
                 }
             }
 
-            // Functional media player
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Panel
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        "NOW PLAYING",
-                        color = Muted,
-                        fontSize = 11.sp,
-                        letterSpacing = 2.sp
-                    )
-
-                    Text(
-                        trackTitle,
-                        color = White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                        if (isPlaying) "Playing" else "Ready",
-                        color = Muted,
-                        fontSize = 13.sp
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = {
-                                val mediaController = controller
-
-                                if (mediaController == null) {
-                                    playerError =
-                                        "Media service is still connecting."
-                                    return@Button
-                                }
-
-                                playerError = null
-
-                                if (mediaController.isPlaying) {
-                                    mediaController.pause()
-                                } else {
-                                    if (mediaController.currentMediaItem == null) {
-                                        mediaController.setMediaItem(
-                                            MediaItem.Builder()
-                                                .setMediaId(
-                                                    PlaybackService.DEMO_TRACK_ID
-                                                )
-                                                .setUri(
-                                                    PlaybackService.DEMO_TRACK_URL
-                                                )
-                                                .setMediaMetadata(
-                                                    androidx.media3.common.MediaMetadata
-                                                        .Builder()
-                                                        .setTitle(
-                                                            "DriveDeck Demo Track"
-                                                        )
-                                                        .setArtist("FrdsArff")
-                                                        .build()
-                                                )
-                                                .build()
-                                        )
-                                        mediaController.prepare()
-                                    }
-
-                                    mediaController.play()
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = White,
-                                contentColor = Ink
-                            )
-                        ) {
-                            Text(
-                                if (isPlaying) "Pause" else "Play"
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                controller?.stop()
-                                controller?.clearMediaItems()
-                                isPlaying = false
-                                trackTitle = "No track playing"
-                                playerError = null
-                            }
-                        ) {
-                            Text("Stop")
-                        }
-                    }
-
-                    playerError?.let {
-                        Text(
-                            it,
-                            color = Color(0xFFFF8A80),
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    Text(
-                        "Demo audio for testing. Requires internet access.",
-                        color = Muted,
-                        fontSize = 11.sp
-                    )
-                }
-            }
+            // Live now playing: Spotify / YouTube Music / any media app
+            LiveNowPlayingCard()
 
             // Weather placeholder
             Card(
+                modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = Panel
                 ),
@@ -375,6 +180,7 @@ private fun DriveDeckScreen(
                     )
                     Text(
                         "Weather not connected",
+                        color = White,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
@@ -396,17 +202,11 @@ private fun DriveDeckScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                ShortcutCard(
-                    "Waze",
-                    Modifier.weight(1f)
-                ) {
+                ShortcutCard("Waze", Modifier.weight(1f)) {
                     openApp("https://waze.com/ul", "com.waze")
                 }
 
-                ShortcutCard(
-                    "Google Maps",
-                    Modifier.weight(1f)
-                ) {
+                ShortcutCard("Google Maps", Modifier.weight(1f)) {
                     openApp(
                         "https://maps.google.com",
                         "com.google.android.apps.maps"
@@ -418,20 +218,14 @@ private fun DriveDeckScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                ShortcutCard(
-                    "Spotify",
-                    Modifier.weight(1f)
-                ) {
+                ShortcutCard("Spotify", Modifier.weight(1f)) {
                     openApp(
                         "https://open.spotify.com",
                         "com.spotify.music"
                     )
                 }
 
-                ShortcutCard(
-                    "YouTube Music",
-                    Modifier.weight(1f)
-                ) {
+                ShortcutCard("YouTube Music", Modifier.weight(1f)) {
                     openApp(
                         "https://music.youtube.com",
                         "com.google.android.apps.youtube.music"
@@ -439,10 +233,7 @@ private fun DriveDeckScreen(
                 }
             }
 
-            ShortcutCard(
-                "YouTube",
-                Modifier.fillMaxWidth()
-            ) {
+            ShortcutCard("YouTube", Modifier.fillMaxWidth()) {
                 openApp(
                     "https://www.youtube.com",
                     "com.google.android.youtube"
