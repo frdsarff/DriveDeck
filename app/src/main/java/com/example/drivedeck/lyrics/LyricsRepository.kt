@@ -1,5 +1,6 @@
 package com.example.drivedeck.lyrics
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -16,17 +17,28 @@ object LyricsRepository {
 
     private const val BASE = "https://lrclib.net/api"
     private const val UA = "DriveDeck/1.0 (https://github.com/frdsarff/DriveDeck)"
+    private const val TAG = "DriveDeckLyrics"
 
     private val cache = ConcurrentHashMap<String, List<LyricLine>>()
-
     private val TS = Regex("""\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?]""")
 
     suspend fun load(title: String, artist: String, durationMs: Long): List<LyricLine> {
-        val key = "${artist.lowercase()}|${title.lowercase()}"
-        cache[key]?.let { return it }
+        val cleanTitle = cleanTitle(title)
+        val key = "${artist.trim().lowercase()}|${cleanTitle.lowercase()}"
+        cache[key]?.takeIf { it.isNotEmpty() }?.let { return it }
 
-        val result = withContext(Dispatchers.IO) { fetch(title, artist, durationMs) }
-        cache[key] = result
+        val result = withContext(Dispatchers.IO) {
+            try {
+                fetch(title.trim(), artist.trim(), durationMs)
+            } catch (e: Exception) {
+                Log.w(TAG, "Lyrics lookup failed for title='$title', artist='$artist'", e)
+                emptyList()
+            }
+        }
+
+        // Do not cache misses: transient network/API failures can be retried.
+        if (result.isNotEmpty()) cache[key] = result
+        Log.i(TAG, "Lyrics lookup result: ${result.size} synced lines for '$title' by '$artist'")
         return result
     }
 
@@ -34,17 +46,12 @@ object LyricsRepository {
         val seconds = if (durationMs > 0) (durationMs / 1000).toInt() else 0
         val clean = cleanTitle(title)
 
-        // 1. Exact match
         getExact(title, artist, seconds)?.let { return it }
+        if (clean != title) getExact(clean, artist, seconds)?.let { return it }
 
-        // 2. Exact match with cleaned title (buang "(feat. ...)", "- Remastered")
-        if (clean != title) {
-            getExact(clean, artist, seconds)?.let { return it }
-        }
-
-        // 3. Fuzzy search
-        search(clean, artist, seconds)?.let { return it }
-
+        // Search endpoint is more tolerant than /get when duration metadata differs.
+        search(clean, artist, seconds, includeArtist = true)?.let { return it }
+        search(clean, artist, seconds, includeArtist = false)?.let { return it }
         return emptyList()
     }
 
@@ -56,48 +63,71 @@ object LyricsRepository {
         val body = httpGet(url) ?: return null
         return try {
             val obj = JSONObject(body)
-            if (obj.isNull("syncedLyrics")) null
-            else parseLrc(obj.getString("syncedLyrics")).takeIf { it.isNotEmpty() }
-        } catch (e: Exception) {
+            val lrc = obj.optString("syncedLyrics").takeIf { it.isNotBlank() } ?: return null
+            parseLrc(lrc).takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
             null
         }
     }
 
-    private fun search(title: String, artist: String, seconds: Int): List<LyricLine>? {
-        val url = "$BASE/search?track_name=${enc(title)}&artist_name=${enc(artist)}"
+    private fun search(
+        title: String,
+        artist: String,
+        seconds: Int,
+        includeArtist: Boolean
+    ): List<LyricLine>? {
+        val url = buildString {
+            append("$BASE/search?track_name=${enc(title)}")
+            if (includeArtist && artist.isNotBlank()) append("&artist_name=${enc(artist)}")
+        }
         val body = httpGet(url) ?: return null
         return try {
             val arr = JSONArray(body)
-            var best: String? = null
-            var bestDiff = Int.MAX_VALUE
+            var bestLines: List<LyricLine>? = null
+            var bestScore = Int.MAX_VALUE
+
             for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                if (o.isNull("syncedLyrics")) continue
-                val diff = if (seconds > 0) abs(o.optInt("duration", seconds) - seconds) else 0
-                if (diff < bestDiff) {
-                    bestDiff = diff
-                    best = o.getString("syncedLyrics")
+                val item = arr.optJSONObject(i) ?: continue
+                val lrc = item.optString("syncedLyrics").takeIf { it.isNotBlank() } ?: continue
+                val lines = parseLrc(lrc)
+                if (lines.isEmpty()) continue
+
+                val duration = item.optInt("duration", 0)
+                val durationDiff = if (seconds > 0 && duration > 0) abs(duration - seconds) else 120
+                // Prefer matching duration, but don't reject a valid result solely
+                // because Spotify/YouTube reports a slightly different duration.
+                if (durationDiff < bestScore) {
+                    bestScore = durationDiff
+                    bestLines = lines
                 }
             }
-            best?.let { parseLrc(it).takeIf { l -> l.isNotEmpty() } }
-        } catch (e: Exception) {
+            bestLines
+        } catch (_: Exception) {
             null
         }
     }
 
     private fun httpGet(url: String): String? {
-        val conn = URL(url).openConnection() as HttpURLConnection
+        var conn: HttpURLConnection? = null
         return try {
-            conn.connectTimeout = 8000
-            conn.readTimeout = 8000
-            conn.setRequestProperty("User-Agent", UA)
-            if (conn.responseCode == 200) {
+            conn = (URL(url).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 6000
+                readTimeout = 6000
+                requestMethod = "GET"
+                setRequestProperty("User-Agent", UA)
+                setRequestProperty("Accept", "application/json")
+            }
+            if (conn.responseCode == HttpURLConnection.HTTP_OK) {
                 conn.inputStream.bufferedReader().use { it.readText() }
-            } else null
+            } else {
+                Log.d(TAG, "Lyrics API returned HTTP ${conn.responseCode} for ${URL(url).path}")
+                null
+            }
         } catch (e: Exception) {
+            Log.w(TAG, "Lyrics request failed", e)
             null
         } finally {
-            conn.disconnect()
+            conn?.disconnect()
         }
     }
 
@@ -107,9 +137,11 @@ object LyricsRepository {
             val stamps = TS.findAll(raw).toList()
             if (stamps.isEmpty()) continue
             val text = raw.substring(stamps.last().range.last + 1).trim()
+            if (text.isBlank()) continue
+
             for (m in stamps) {
-                val min = m.groupValues[1].toLong()
-                val sec = m.groupValues[2].toLong()
+                val min = m.groupValues[1].toLongOrNull() ?: continue
+                val sec = m.groupValues[2].toLongOrNull() ?: continue
                 val frac = m.groupValues[3]
                 val ms = when (frac.length) {
                     0 -> 0L
