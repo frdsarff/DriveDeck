@@ -2,10 +2,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Network access for streaming music -->
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- Media playback service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -13,10 +10,8 @@
     <application
         android:allowBackup="true"
         android:label="DriveDeck"
-        android:usesCleartextTraffic="false"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:usesCleartextTraffic="false">
 
-        <!-- Main DriveDeck app -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -28,7 +23,6 @@
 
         </activity>
 
-        <!-- Media playback and Android Auto -->
         <service
             android:name=".PlaybackService"
             android:exported="true"
@@ -44,7 +38,6 @@
 
         </service>
 
-        <!-- Android Auto media app declaration -->
         <meta-data
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
