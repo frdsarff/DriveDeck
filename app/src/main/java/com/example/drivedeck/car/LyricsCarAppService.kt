@@ -50,6 +50,7 @@ private class LyricsSession : Session() {
         super.onDestroy()
     }
 }
+
 private class LyricsScreen(
     carContext: androidx.car.app.CarContext
 ) : Screen(carContext) {
@@ -242,8 +243,8 @@ private class LyricsScreen(
         }.coerceAtLeast(0)
     }
 
-    override fun onDestroy() {
+    // Dipanggil oleh LyricsSession apabila sesi ditutup.
+    fun dispose() {
         scope.cancel()
-        super.onDestroy()
     }
 }
