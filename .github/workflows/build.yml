@@ -1,9 +1,10 @@
-
 name: Build DriveDeck APK
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'feature/**'
   workflow_dispatch:
 
 permissions:
