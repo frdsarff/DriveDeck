@@ -34,22 +34,15 @@ class LyricsCarAppService : CarAppService() {
     override fun onCreateSession(): Session = LyricsSession()
 }
 
+
 private class LyricsSession : Session() {
 
-    private var lyricsScreen: LyricsScreen? = null
-
     override fun onCreateScreen(intent: Intent): Screen {
-        return LyricsScreen(carContext).also {
-            lyricsScreen = it
-        }
-    }
-
-    override fun onDestroy() {
-        lyricsScreen?.dispose()
-        lyricsScreen = null
-        super.onDestroy()
+        return LyricsScreen(carContext)
     }
 }
+
+
 
 private class LyricsScreen(
     carContext: androidx.car.app.CarContext
