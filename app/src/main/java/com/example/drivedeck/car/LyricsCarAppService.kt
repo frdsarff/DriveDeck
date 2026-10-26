@@ -178,9 +178,4 @@ private class LyricsScreen(
         return lyrics.indexOfLast { it.timeMs <= safePosition + 300L }.coerceAtLeast(0)
     }
 
-    override fun onDestroy() {
-        Log.i(TAG, "LyricsScreen destroyed")
-        scope.cancel()
-        super.onDestroy()
-    }
 }
