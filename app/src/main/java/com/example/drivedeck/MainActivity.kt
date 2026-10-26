@@ -160,6 +160,7 @@ private fun DriveDeckScreen(
 
             // Live now playing: Spotify / YouTube Music / any media app
             LiveNowPlayingCard()
+            LyricsCard()
 
             // Weather placeholder
             Card(
