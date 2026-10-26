@@ -133,8 +133,8 @@ private fun PhoneApp(onOpenNotificationSettings: () -> Unit) {
             primary = Color(0xFF26CDB5), background = bg, surface = panel, onBackground = text, onSurface = text
         )) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().background(bg),
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 28.dp),
+                modifier = Modifier.fillMaxSize().background(bg).windowInsetsPadding(WindowInsets.statusBars),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 item {
@@ -250,9 +250,9 @@ private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit, onBack: 
             onBackground = textColor, onSurface = textColor
         )
     ) {
-        Column(Modifier.fillMaxSize().background(bg)) {
+        Column(Modifier.fillMaxSize().background(bg).windowInsetsPadding(WindowInsets.statusBars).windowInsetsPadding(WindowInsets.navigationBars)) {
             Row(
-                Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 38.dp, bottom = 16.dp),
+                Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("‹", color = textColor, fontSize = 32.sp, modifier = Modifier.clickable(onClick = onBack))
