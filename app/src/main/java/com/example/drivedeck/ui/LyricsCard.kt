@@ -1,3 +1,4 @@
+
 package com.example.drivedeck.ui
 
 import android.os.SystemClock
@@ -21,6 +22,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
@@ -35,7 +37,7 @@ import com.example.drivedeck.bridge.MediaBridge
 import com.example.drivedeck.lyrics.LyricLine
 import com.example.drivedeck.lyrics.LyricsRepository
 
-/** Lirik rasa lambat? Naikkan (cuba 500). Rasa terlalu awal? Turunkan (cuba 0). */
+/** Laraskan nilai ini jika lirik terlalu awal atau terlalu lambat. */
 private const val SYNC_LEAD_MS = 250L
 
 private val LyricsBg = Color(0xFF1B1E25)
@@ -52,23 +54,25 @@ fun LyricsCard(modifier: Modifier = Modifier) {
     val nowMs = remember { mutableStateOf(0L) }
     val listState = rememberLazyListState()
 
-    // 1. Cari lirik bila lagu bertukar
+    // 1. Cari lirik apabila lagu bertukar.
     LaunchedEffect(np.title, np.artist) {
         if (np.title.isBlank()) {
             lines = emptyList()
             return@LaunchedEffect
         }
+
         lines = null
         lines = LyricsRepository.load(np.title, np.artist, np.durationMs)
     }
 
-    // 2. Jam posisi lagu, update setiap frame supaya fill karaoke licin
+    // 2. Kemas kini posisi lagu untuk penyegerakan lirik.
     LaunchedEffect(np) {
         if (np.isPlaying) {
             while (true) {
                 nowMs.value = np.positionMs +
-                        (SystemClock.elapsedRealtime() - np.updatedAt) +
-                        SYNC_LEAD_MS
+                    (SystemClock.elapsedRealtime() - np.updatedAt) +
+                    SYNC_LEAD_MS
+
                 withFrameNanos { }
             }
         } else {
@@ -77,15 +81,22 @@ fun LyricsCard(modifier: Modifier = Modifier) {
     }
 
     val list = lines
+
     val currentIndex by remember(list) {
-        derivedStateOf { list?.indexOfLast { it.timeMs <= nowMs.value } ?: -1 }
+        derivedStateOf {
+            list?.indexOfLast { it.timeMs <= nowMs.value } ?: -1
+        }
     }
 
-    // 3. Scroll auto, baris semasa duduk kira-kira satu pertiga dari atas
+    // 3. Tatal automatik supaya baris semasa mudah dilihat.
     LaunchedEffect(currentIndex, list) {
         if (list.isNullOrEmpty()) return@LaunchedEffect
+
         val offset = -(listState.layoutInfo.viewportSize.height / 3)
-        listState.animateScrollToItem(currentIndex.coerceAtLeast(0), offset)
+        listState.animateScrollToItem(
+            currentIndex.coerceAtLeast(0),
+            offset
+        )
     }
 
     if (np.title.isBlank()) return
@@ -95,33 +106,54 @@ fun LyricsCard(modifier: Modifier = Modifier) {
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = LyricsBg)
     ) {
-        Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)) {
-            Text("LYRICS", color = HeaderMuted, fontSize = 12.sp, letterSpacing = 2.sp)
+        Column(
+            modifier = Modifier.padding(
+                horizontal = 24.dp,
+                vertical = 20.dp
+            )
+        ) {
+            Text(
+                text = "LYRICS",
+                color = HeaderMuted,
+                fontSize = 12.sp,
+                letterSpacing = 2.sp
+            )
+
             Spacer(Modifier.height(12.dp))
 
             when {
-                list == null -> Text("Mencari lirik...", color = HeaderMuted, fontSize = 15.sp)
+                list == null -> {
+                    Text(
+                        text = "Mencari lirik...",
+                        color = HeaderMuted,
+                        fontSize = 15.sp
+                    )
+                }
 
-                list.isEmpty() -> Text(
-                    "Lirik tak dijumpai untuk lagu ni.",
-                    color = HeaderMuted,
-                    fontSize = 15.sp
-                )
+                list.isEmpty() -> {
+                    Text(
+                        text = "Lirik tak dijumpai untuk lagu ni.",
+                        color = HeaderMuted,
+                        fontSize = 15.sp
+                    )
+                }
 
-                else -> LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(280.dp)
-                ) {
-                    itemsIndexed(list) { i, line ->
-                        KaraokeLine(
-                            index = i,
-                            line = line,
-                            nextTimeMs = list.getOrNull(i + 1)?.timeMs,
-                            currentIndex = currentIndex,
-                            nowMs = nowMs
-                        )
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(280.dp)
+                    ) {
+                        itemsIndexed(list) { i, line ->
+                            KaraokeLine(
+                                index = i,
+                                line = line,
+                                nextTimeMs = list.getOrNull(i + 1)?.timeMs,
+                                currentIndex = currentIndex,
+                                nowMs = nowMs
+                            )
+                        }
                     }
                 }
             }
@@ -142,17 +174,25 @@ private fun KaraokeLine(
     val rowModifier = Modifier
         .fillMaxWidth()
         .clickable(
-            interactionSource = remember { MutableInteractionSource() },
+            interactionSource = remember {
+                MutableInteractionSource()
+            },
             indication = null
-        ) { MediaBridge.seekTo(line.timeMs) }
+        ) {
+            MediaBridge.seekTo(line.timeMs)
+        }
         .padding(vertical = 8.dp)
 
     if (index == currentIndex) {
-        // Fill putih bergerak dari kiri ke kanan ikut masa baris tu
-        val duration = ((nextTimeMs ?: (line.timeMs + 4000)) - line.timeMs)
-            .coerceIn(600L, 8000L)
-        val progress = ((nowMs.value - line.timeMs).toFloat() / (duration * 0.9f))
-            .coerceIn(0f, 1f)
+        // Isi teks bergerak dari kiri ke kanan mengikut masa lirik.
+        val duration = (
+            (nextTimeMs ?: (line.timeMs + 4000)) - line.timeMs
+        ).coerceIn(600L, 8000L)
+
+        val progress = (
+            (nowMs.value - line.timeMs).toFloat() /
+                (duration * 0.9f)
+        ).coerceIn(0f, 1f)
 
         val brush = Brush.horizontalGradient(
             colorStops = arrayOf(
