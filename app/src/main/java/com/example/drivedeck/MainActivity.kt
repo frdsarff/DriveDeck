@@ -116,7 +116,7 @@ private fun PhoneApp(onOpenNotificationSettings: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("drivedeck_phone_settings", android.content.Context.MODE_PRIVATE) }
     var appearance by remember { mutableStateOf(prefs.getString("appearance", "Dark") ?: "Dark") }
-    var language by remember { mutableStateOf(prefs.getString("language", "English") ?: "English") }
+    var language by remember { mutableStateOf(prefs.getString("language", "English")?.takeIf { it == "English" || it == "Bahasa Melayu" } ?: "English") }
     val isLight = appearance == "Light" || (appearance == "System" && !androidx.compose.foundation.isSystemInDarkTheme())
     val bg = if (isLight) Color(0xFFF5F6FA) else Color(0xFF0D101A)
     val panel = if (isLight) Color.White else Color(0xFF1B1E29)
@@ -294,7 +294,7 @@ private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit, onBack: 
                 item {
                     SettingsSectionTitle(if (bm) "Bahasa" else "Language", textColor)
                     SettingsPanel(panel, textColor) {
-                        listOf("Phone language", "English", "Bahasa Melayu", "中文", "தமிழ்").forEach { option ->
+                        listOf("English", "Bahasa Melayu").forEach { option ->
                             Row(
                                 Modifier.fillMaxWidth().clickable {
                                     language = option
