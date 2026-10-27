@@ -118,7 +118,9 @@ class PlaybackService : MediaLibraryService() {
         /** Posisi lagu sekarang, dikira dari masa update terakhir bridge (jam sama dengan kad phone). */
         fun estimatedPositionMs(): Long {
             val np = MediaBridge.state.value
-            val extra = if (np.isPlaying) SystemClock.elapsedRealtime() - np.updatedAt else 0L
+            val extra = if (np.isPlaying) {
+                ((SystemClock.elapsedRealtime() - np.updatedAt) * np.playbackSpeed.coerceAtLeast(0f)).toLong()
+            } else 0L
             val pos = np.positionMs + extra
             return if (np.durationMs > 0) pos.coerceAtMost(np.durationMs) else pos
         }
