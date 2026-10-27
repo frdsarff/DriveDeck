@@ -25,6 +25,7 @@ data class NowPlaying(
     val isPlaying: Boolean = false,
     val durationMs: Long = 0L,
     val positionMs: Long = 0L,
+    val playbackSpeed: Float = 1f,
     val updatedAt: Long = android.os.SystemClock.elapsedRealtime()
 )
 
@@ -181,7 +182,8 @@ object MediaBridge {
                 ?: md?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON),
             isPlaying = ps?.state == PlaybackState.STATE_PLAYING,
             durationMs = duration,
-            positionMs = position
+            positionMs = position,
+            playbackSpeed = ps?.playbackSpeed?.takeIf { it > 0f } ?: 1f
         )
     }
 
