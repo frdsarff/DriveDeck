@@ -335,20 +335,26 @@ class PlaybackService : MediaLibraryService() {
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
             val np = MediaBridge.state.value
 
-            val items = if (parentId == ROOT_ID && np.title.isNotBlank()) {
+            // Always expose a playable "now playing" entry. Android Auto may
+            // request the browse tree before MediaBridge has received a track;
+            // returning an empty list makes the DriveDeck screen show "No items".
+            val items = if (parentId == ROOT_ID) {
+                val title = np.title.ifBlank { "Play music on your phone" }
+                val metadata = MediaMetadata.Builder()
+                    .setTitle(title)
+                    .apply {
+                        if (np.artist.isNotBlank()) setArtist(np.artist)
+                        if (np.appName.isNotBlank()) setAlbumTitle(np.appName)
+                    }
+                    .setIsBrowsable(false)
+                    .setIsPlayable(true)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                    .build()
+
                 ImmutableList.of(
                     MediaItem.Builder()
                         .setMediaId(CURRENT_ID)
-                        .setMediaMetadata(
-                            MediaMetadata.Builder()
-                                .setTitle(np.title)
-                                .setArtist(np.artist)
-                                .setAlbumTitle(np.appName)
-                                .setIsBrowsable(false)
-                                .setIsPlayable(true)
-                                .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-                                .build()
-                        )
+                        .setMediaMetadata(metadata)
                         .build()
                 )
             } else {
