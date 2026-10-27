@@ -371,7 +371,7 @@ class PlaybackService : MediaLibraryService() {
         const val CURRENT_ID = "bridge-current"
 
         /** Letak false kalau nak skrin kereta tunjuk nama artis macam biasa. */
-        const val SHOW_LYRICS_ON_CAR = false
+        const val SHOW_LYRICS_ON_CAR = true
 
         /** Lirik muncul lebih awal sikit (ms). Naikkan kalau rasa lambat kat kereta. */
         const val LYRIC_LEAD_MS = 300L
