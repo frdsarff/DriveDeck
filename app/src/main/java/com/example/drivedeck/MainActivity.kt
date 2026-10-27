@@ -52,8 +52,11 @@ private val Mint = Color(0xFF62E6C0)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val isHeadUnit = resources.configuration.smallestScreenWidthDp >= 600 ||
-            packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)
+        val config = resources.configuration
+        val isHeadUnit = packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE) ||
+            config.smallestScreenWidthDp >= 600 ||
+            (config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE &&
+                config.screenWidthDp >= 600)
         if (isHeadUnit) requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.BLACK
