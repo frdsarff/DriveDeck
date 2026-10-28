@@ -823,8 +823,7 @@ private fun LyricsPlayer(np: NowPlaying, onBack: () -> Unit) {
 
     val position = remember(np.positionMs, np.updatedAt, np.isPlaying, tick) {
         val elapsed = if (np.isPlaying) (tick - np.updatedAt).coerceAtLeast(0L) else 0L
-        val speed = np.playbackSpeed.takeIf { it > 0f } ?: 1f
-        val value = np.positionMs + (elapsed * speed).toLong()
+        val value = np.positionMs + elapsed
         if (np.durationMs > 0L) value.coerceAtMost(np.durationMs) else value
     }
     val activeIndex = remember(lyrics, position) { lyrics.indexOfLast { it.timeMs <= position + 250L }.coerceAtLeast(0) }
