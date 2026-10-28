@@ -517,44 +517,113 @@ private fun HomeDashboard(np: NowPlaying, openApp: (String, String?) -> Unit, on
         }
     }
     val time = remember(now) { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(now)) }
-    val date = remember(now) { java.text.SimpleDateFormat("EEEE, d MMM", java.util.Locale.getDefault()).format(java.util.Date(now)) }
+    val date = remember(now) { java.text.SimpleDateFormat("EEE, d MMM", java.util.Locale.getDefault()).format(java.util.Date(now)) }
+    val hasTrack = np.title.isNotBlank()
+    val progress = if (np.durationMs > 0L) (np.positionMs.toFloat() / np.durationMs.toFloat()).coerceIn(0f, 1f) else 0f
 
     Row(
-        Modifier.fillMaxSize().padding(start = 66.dp, end = 18.dp, top = 18.dp, bottom = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        Modifier.fillMaxSize().padding(start = 66.dp, end = 20.dp, top = 18.dp, bottom = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(Modifier.weight(1.08f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-            Column {
-                Text("DRIVEDECK", color = Muted, fontSize = 12.sp, letterSpacing = 3.sp)
-                Spacer(Modifier.height(8.dp))
-                Text(time, color = White, fontSize = 62.sp, lineHeight = 64.sp, fontWeight = FontWeight.Light)
-                Text(date, color = White.copy(alpha = 0.8f), fontSize = 18.sp)
+        // Left rail: clock and a prominent now-playing surface.
+        Column(Modifier.weight(1.02f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = Color(0xFF171C27),
+                border = BorderStroke(1.dp, Color(0xFF62E6C0).copy(alpha = 0.22f))
+            ) {
+                Column(Modifier.padding(horizontal = 22.dp, vertical = 18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(Modifier.size(8.dp).clip(CircleShape).background(Mint))
+                        Text("DRIVEDECK COCKPIT", color = Mint, fontSize = 11.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(time, color = White, fontSize = 58.sp, lineHeight = 62.sp, fontWeight = FontWeight.Light)
+                    Text(date, color = Muted, fontSize = 15.sp)
+                }
             }
-            NowPlayingTile(np, onOpenPlayer)
-            Text("DRIVE SAFE  •  DRIVEDECK", color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp)
+            Card(
+                onClick = onOpenPlayer,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF202634)),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f))
+            ) {
+                Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("♫", color = Mint, fontSize = 22.sp)
+                        Text("NOW PLAYING", color = Muted, fontSize = 10.sp, letterSpacing = 1.8.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.weight(1f))
+                        Text("OPEN ↗", color = Mint, fontSize = 10.sp, letterSpacing = 1.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        if (np.artwork != null) {
+                            Image(np.artwork.asImageBitmap(), null, Modifier.size(88.dp).clip(RoundedCornerShape(17.dp)), contentScale = ContentScale.Crop)
+                        } else {
+                            Box(Modifier.size(88.dp).clip(RoundedCornerShape(17.dp)).background(CardColor), contentAlignment = Alignment.Center) {
+                                Text("♫", color = Muted, fontSize = 36.sp)
+                            }
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(np.title.ifBlank { "Ready for music" }, color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Spacer(Modifier.height(5.dp))
+                            Text(np.artist.ifBlank { "Choose a source to begin" }, color = Muted, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Spacer(Modifier.height(12.dp))
+                            Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f))) {
+                                Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Mint))
+                            }
+                            Spacer(Modifier.height(5.dp))
+                            Text(if (np.isPlaying) "PLAYING  •  Tap to open player" else "TAP TO OPEN PLAYER", color = if (np.isPlaying) Mint else Muted, fontSize = 9.sp, letterSpacing = 0.8.sp)
+                        }
+                    }
+                }
+            }
+            Text("KEEP YOUR FOCUS ON THE ROAD", color = Muted, fontSize = 9.sp, letterSpacing = 1.4.sp)
         }
 
-        Column(Modifier.weight(1.35f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(Modifier.weight(0.82f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DashboardTile("PLAYER", if (np.title.isBlank()) "Buka player lirik" else np.title, Modifier.weight(1f).fillMaxHeight(), onOpenPlayer)
-                DashboardTile("SHORTCUTS", "Apps & web", Modifier.weight(1f).fillMaxHeight()) {
-                    openApp("https://www.youtube.com", null)
+        // Right side: large, easy-to-hit launch cards instead of the old small tile grid.
+        Column(Modifier.weight(1.25f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text("QUICK LAUNCH", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Your drive, your media.", color = White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Surface(shape = RoundedCornerShape(14.dp), color = Color(0xFF182C2D), border = BorderStroke(1.dp, Mint.copy(alpha = 0.25f))) {
+                    Text("●  SYSTEM READY", color = Mint, fontSize = 9.sp, letterSpacing = 0.8.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
                 }
             }
-            Row(Modifier.weight(1.15f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                EntertainmentTile("YouTube Web", "Video & music", "▶", Modifier.weight(1f).fillMaxHeight()) {
-                    onOpenYouTubeWeb()
+            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                EntertainmentTile("YouTube Web", "Open web media", "▶", Modifier.weight(1f).fillMaxHeight()) { onOpenYouTubeWeb() }
+                EntertainmentTile("YouTube Music", "Music library", "♫", Modifier.weight(1f).fillMaxHeight()) {
+                    openApp("https://music.youtube.com", "com.google.android.apps.youtube.music")
                 }
-                EntertainmentTile("RTMKlik", "TV & radio", "▣", Modifier.weight(1f).fillMaxHeight()) {
+            }
+            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                EntertainmentTile("Spotify", "Your playlists", "≋", Modifier.weight(1f).fillMaxHeight()) {
+                    openApp("https://open.spotify.com", "com.spotify.music")
+                }
+                EntertainmentTile("RTMKlik", "Live TV & radio", "▣", Modifier.weight(1f).fillMaxHeight()) {
                     openApp("https://rtmklik.rtm.gov.my", null)
                 }
             }
-            Row(Modifier.weight(0.72f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DashboardTile("SPOTIFY", "Open app", Modifier.weight(1f).fillMaxHeight()) {
-                    openApp("https://open.spotify.com", "com.spotify.music")
-                }
-                DashboardTile("YOUTUBE MUSIC", "Open app", Modifier.weight(1f).fillMaxHeight()) {
-                    openApp("https://music.youtube.com", "com.google.android.apps.youtube.music")
+            Card(
+                onClick = { openApp("https://www.youtube.com", null) },
+                modifier = Modifier.fillMaxWidth().height(66.dp),
+                shape = RoundedCornerShape(19.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF152D32)),
+                border = BorderStroke(1.dp, Mint.copy(alpha = 0.22f))
+            ) {
+                Row(Modifier.fillMaxSize().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Surface(shape = RoundedCornerShape(12.dp), color = Mint.copy(alpha = 0.15f)) {
+                        Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) { Text("＋", color = Mint, fontSize = 23.sp) }
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text("Explore media", color = White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Open YouTube in your browser", color = Muted, fontSize = 11.sp)
+                    }
+                    Text("↗", color = Mint, fontSize = 22.sp)
                 }
             }
         }
