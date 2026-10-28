@@ -184,7 +184,6 @@ private fun PhoneApp(onOpenNotificationSettings: () -> Unit) {
                     Text(if (bm) "Aplikasi" else "Apps", color = text, fontSize = 20.sp, fontWeight = FontWeight.Medium)
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         PhoneDashboardCard(if (bm) "Lirik" else "Lyrics", if (bm) "Tetapan sync lirik" else "Lyrics sync settings", "♫", Modifier.fillMaxWidth(), panel, text, muted) { page = PhonePage.SETTINGS }
-                        PhoneDashboardCard("YouTube Web", if (bm) "Buka YouTube dalam DriveDeck" else "Open YouTube inside DriveDeck", "▶", Modifier.fillMaxWidth(), panel, text, muted) { page = PhonePage.YOUTUBE_WEB }
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             PhoneDashboardCard(if (bm) "Paparan kereta" else "Car display", if (bm) "Tetapan head unit" else "Head unit settings", "▣", Modifier.weight(1f), panel, text, muted) { page = PhonePage.SETTINGS }
                             PhoneDashboardCard(if (bm) "Tetapan" else "Settings", if (bm) "Konfigurasi DriveDeck" else "Configure DriveDeck", "⚙", Modifier.weight(1f), panel, text, muted) { page = PhonePage.SETTINGS }
