@@ -2,7 +2,7 @@ name: Build DriveDeck APK
 
 on:
   push:
-    branches: [main, rebuild/clean-start]
+    branches: [main, rebuild/clean-start, feature/aabrowser-integration]
   workflow_dispatch:
 
 permissions:
