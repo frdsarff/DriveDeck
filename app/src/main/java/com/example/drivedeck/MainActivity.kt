@@ -34,6 +34,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import android.webkit.CookieManager
+import android.webkit.WebStorage
 import android.webkit.WebViewClient
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -349,6 +351,59 @@ private fun PhoneSettingsScreen(onOpenNotificationSettings: () -> Unit, onBack: 
                             Text(if (bm) "Sumber lirik lalai" else "Default lyrics source", color = textColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
                             Text(if (bm) "Auto  ▾" else "Auto  ▾", color = mutedColor, fontSize = 15.sp)
                         }
+                    }
+                }
+                item {
+                    SettingsSectionTitle("YouTube Web", textColor)
+                    SettingsPanel(panel, textColor) {
+                        Text(
+                            if (bm) "Kosongkan cache atau padam data laman YouTube yang disimpan oleh WebView DriveDeck."
+                            else "Clear cached files or remove YouTube site data stored by DriveDeck WebView.",
+                            color = mutedColor, fontSize = 14.sp
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    WebView(context).apply {
+                                        clearCache(true)
+                                        destroy()
+                                    }
+                                    Toast.makeText(
+                                        context,
+                                        if (bm) "Cache YouTube Web dibersihkan" else "YouTube Web cache cleared",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            ) { Text(if (bm) "Clear cache" else "Clear cache") }
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    WebView(context).apply {
+                                        clearCache(true)
+                                        clearHistory()
+                                        clearFormData()
+                                        destroy()
+                                    }
+                                    CookieManager.getInstance().removeAllCookies {
+                                        CookieManager.getInstance().flush()
+                                    }
+                                    WebStorage.getInstance().deleteAllData()
+                                    Toast.makeText(
+                                        context,
+                                        if (bm) "Data YouTube Web dipadam" else "YouTube Web data cleared",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            ) { Text(if (bm) "Clear data" else "Clear data") }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (bm) "Clear data akan log keluar akaun YouTube pada WebView dan memadam cookies serta storan laman."
+                            else "Clear data signs YouTube Web out in the embedded view and removes its cookies and site storage.",
+                            color = mutedColor, fontSize = 12.sp
+                        )
                     }
                 }
                 item {
