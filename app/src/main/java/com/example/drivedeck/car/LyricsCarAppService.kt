@@ -207,14 +207,16 @@ private class LyricsScreen(
 
         val np = MediaBridge.state.value
 
+        // MediaBridge.positionMs is a snapshot; advance it using the active
+        // player's playback speed so lyrics stay aligned at 1.25x/1.5x/etc.
         val elapsed = if (np.isPlaying) {
             (SystemClock.elapsedRealtime() - np.updatedAt)
                 .coerceAtLeast(0L)
         } else {
             0L
         }
-
-        val position = np.positionMs + elapsed
+        val speed = np.playbackSpeed.takeIf { it > 0f } ?: 1f
+        val position = np.positionMs + (elapsed * speed).toLong()
         val safePosition = if (np.durationMs > 0) {
             position.coerceAtMost(np.durationMs)
         } else {
