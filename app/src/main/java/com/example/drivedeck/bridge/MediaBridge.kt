@@ -50,6 +50,54 @@ object MediaBridge {
     private var active: MediaController? = null
     private var registered = false
 
+    // Web media exposed by DriveDeck's own WebView (inspired by Jeda's web-media bridge).
+    private var webNowPlaying: NowPlaying? = null
+    @Volatile private var webMediaActive = false
+    @Volatile private var webControlHandler: ((String) -> Unit)? = null
+
+    fun attachWebControlHandler(handler: ((String) -> Unit)?) {
+        webControlHandler = handler
+    }
+
+    fun publishWebState(
+        title: String,
+        artist: String,
+        durationMs: Long,
+        positionMs: Long,
+        playbackSpeed: Float,
+        isPlaying: Boolean,
+        isActive: Boolean
+    ) {
+        if (!isActive || title.isBlank()) {
+            webMediaActive = false
+            webNowPlaying = null
+            publish()
+            return
+        }
+        val ctx = appContext
+        webMediaActive = true
+        webNowPlaying = NowPlaying(
+            hasAccess = true,
+            packageName = ctx?.packageName ?: "com.example.drivedeck",
+            appName = "DriveDeck Web",
+            title = title,
+            artist = artist,
+            isPlaying = isPlaying,
+            durationMs = durationMs.coerceAtLeast(0L),
+            positionMs = positionMs.coerceAtLeast(0L),
+            playbackSpeed = playbackSpeed.takeIf { it > 0f } ?: 1f,
+            updatedAt = SystemClock.elapsedRealtime()
+        )
+        _state.value = webNowPlaying!!
+    }
+
+    private fun webCommand(command: String): Boolean {
+        val handler = webControlHandler
+        if (!webMediaActive || handler == null) return false
+        handler.invoke(command)
+        return true
+    }
+
     private val sessionsListener =
         MediaSessionManager.OnActiveSessionsChangedListener { list ->
             pick(list.orEmpty())
@@ -100,11 +148,12 @@ object MediaBridge {
 
     // ---- Controls -------------------------------------------------------
 
-    fun play() { active?.transportControls?.play() }
+    fun play() { if (!webCommand("play")) active?.transportControls?.play() }
 
-    fun pause() { active?.transportControls?.pause() }
+    fun pause() { if (!webCommand("pause")) active?.transportControls?.pause() }
 
     fun togglePlayPause() {
+        if (webCommand("toggle")) return
         val c = active ?: return
         if (c.playbackState?.state == PlaybackState.STATE_PLAYING) {
             c.transportControls.pause()
@@ -113,11 +162,13 @@ object MediaBridge {
         }
     }
 
-    fun next() { active?.transportControls?.skipToNext() }
+    fun next() { if (!webCommand("next")) active?.transportControls?.skipToNext() }
 
-    fun previous() { active?.transportControls?.skipToPrevious() }
+    fun previous() { if (!webCommand("previous")) active?.transportControls?.skipToPrevious() }
 
-    fun seekTo(positionMs: Long) { active?.transportControls?.seekTo(positionMs) }
+    fun seekTo(positionMs: Long) {
+        if (!webCommand("seek:" + positionMs)) active?.transportControls?.seekTo(positionMs)
+    }
 
     // ---- Internals ------------------------------------------------------
 
@@ -150,6 +201,13 @@ object MediaBridge {
     }
 
     private fun publish() {
+        if (webMediaActive) {
+            val web = webNowPlaying
+            if (web != null) {
+                _state.value = web.copy(updatedAt = SystemClock.elapsedRealtime())
+                return
+            }
+        }
         val ctx = appContext ?: return
         val c = active
         if (c == null) {
