@@ -22,10 +22,20 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|layoutDirection|locale"
+            android:resizeableActivity="true"
+            android:label="DriveDeck">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Expose the full-screen DriveDeck dashboard as a car-launchable activity.
+                 This is not a distraction-optimized Car App Library template. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.CAR_LAUNCHER" />
             </intent-filter>
         </activity>
 
