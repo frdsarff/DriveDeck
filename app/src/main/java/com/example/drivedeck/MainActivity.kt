@@ -37,6 +37,7 @@ import android.webkit.WebView
 import android.webkit.CookieManager
 import android.webkit.WebStorage
 import android.webkit.WebViewClient
+import android.webkit.JavascriptInterface
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -614,6 +615,102 @@ private fun EntertainmentTile(title: String, subtitle: String, symbol: String, m
 }
 
 
+private class WebMediaJavascriptBridge {
+    @JavascriptInterface
+    fun update(
+        title: String,
+        artist: String,
+        durationMs: Double,
+        positionMs: Double,
+        playbackSpeed: Double,
+        isPlaying: Boolean,
+        isActive: Boolean
+    ) {
+        MediaBridge.publishWebState(
+            title = title,
+            artist = artist,
+            durationMs = durationMs.toLong(),
+            positionMs = positionMs.toLong(),
+            playbackSpeed = playbackSpeed.toFloat(),
+            isPlaying = isPlaying,
+            isActive = isActive
+        )
+    }
+}
+
+private val webMediaScript = """
+(function () {
+  if (window.__driveDeckMediaInstalled) return;
+  window.__driveDeckMediaInstalled = true;
+  function findMedia() {
+    var all = Array.from(document.querySelectorAll('video,audio'));
+    all = all.filter(function (m) { return Number.isFinite(m.duration) && m.duration > 0; });
+    if (!all.length) return null;
+    var playing = all.find(function (m) { return !m.paused && !m.ended; });
+    if (playing) return playing;
+    return all.sort(function (a,b) {
+      var aa = a.getBoundingClientRect(), bb = b.getBoundingClientRect();
+      return (bb.width * bb.height) - (aa.width * aa.height);
+    })[0];
+  }
+  function titleFor() {
+    var meta = document.querySelector('meta[property="og:title"]');
+    var title = (meta && meta.content) || document.title || '';
+    return title.replace(/\s*[-|]\s*(YouTube|Spotify|YouTube Music)\s*$/i, '').trim();
+  }
+  function artistFor() {
+    var author = document.querySelector('meta[name="author"]');
+    if (author && author.content) return author.content.trim();
+    var channel = document.querySelector('#owner #channel-name a, ytmusic-player-bar .subtitle a');
+    return channel ? channel.textContent.trim() : '';
+  }
+  function report() {
+    try {
+      var media = findMedia();
+      var active = !!media && !media.ended && media.duration > 0 &&
+        (media.readyState > 0 || !media.paused || media.currentTime > 0);
+      if (!window.DriveDeckMedia) return;
+      window.DriveDeckMedia.update(
+        active ? titleFor() : '',
+        active ? artistFor() : '',
+        active && Number.isFinite(media.duration) ? media.duration * 1000 : 0,
+        active && Number.isFinite(media.currentTime) ? media.currentTime * 1000 : 0,
+        active && Number.isFinite(media.playbackRate) ? media.playbackRate : 1,
+        active ? !media.paused && !media.ended : false,
+        active
+      );
+    } catch (_) {}
+  }
+  window.__driveDeckCommand = function (command) {
+    var media = findMedia();
+    if (!media) return;
+    try {
+      if (command === 'play') media.play().catch(function(){});
+      else if (command === 'pause') media.pause();
+      else if (command === 'toggle') { if (media.paused) media.play().catch(function(){}); else media.pause(); }
+      else if (command === 'next' || command === 'previous') {
+        var selector = command === 'next'
+          ? '.ytp-next-button, .ytmusicPlayerControlsNextButton button, .next-button'
+          : '.ytp-prev-button, .ytmusicPlayerControlsPreviousButton button, .previous-button';
+        var button = document.querySelector(selector);
+        if (button) button.click();
+      } else if (command.indexOf('seek:') === 0) {
+        var target = Number(command.substring(5));
+        if (Number.isFinite(target)) media.currentTime = Math.max(0, Math.min(media.duration || target / 1000, target / 1000));
+      }
+    } catch (_) {}
+    setTimeout(report, 250);
+  };
+  document.addEventListener('play', report, true);
+  document.addEventListener('pause', report, true);
+  document.addEventListener('ended', report, true);
+  document.addEventListener('loadedmetadata', report, true);
+  document.addEventListener('durationchange', report, true);
+  setInterval(report, 1000);
+  report();
+})();
+""".trimIndent()
+
 @Composable
 private fun YouTubeWebPage(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -662,9 +759,16 @@ private fun YouTubeWebPage(onBack: () -> Unit) {
                             canGoBack = view.canGoBack()
                             canGoForward = view.canGoForward()
                             pageTitle = view.title?.takeIf { it.isNotBlank() } ?: Uri.parse(url).host.orEmpty()
+                            view.evaluateJavascript(webMediaScript, null)
                         }
                     }
                     webChromeClient = WebChromeClient()
+                    addJavascriptInterface(WebMediaJavascriptBridge(), "DriveDeckMedia")
+                    MediaBridge.attachWebControlHandler { command ->
+                        post {
+                            evaluateJavascript("window.__driveDeckCommand && window.__driveDeckCommand('$command')", null)
+                        }
+                    }
                     browser = this
                     loadUrl("https://www.youtube.com")
                 }
@@ -683,6 +787,8 @@ private fun YouTubeWebPage(onBack: () -> Unit) {
             browser?.webViewClient = WebViewClient()
             browser?.destroy()
             browser = null
+            MediaBridge.attachWebControlHandler(null)
+            MediaBridge.publishWebState("", "", 0L, 0L, 1f, false, false)
         }
     }
 }
