@@ -31,6 +31,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -107,7 +111,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class DeckPage { HOME, PLAYER }
+private enum class DeckPage { HOME, PLAYER, YOUTUBE_WEB }
 
 
 
@@ -428,8 +432,9 @@ private fun DriveDeckApp(openApp: (String, String?) -> Unit) {
         )
 
         when (page) {
-            DeckPage.HOME -> HomeDashboard(np, openApp) { page = DeckPage.PLAYER }
+            DeckPage.HOME -> HomeDashboard(np, openApp, { page = DeckPage.PLAYER }) { page = DeckPage.YOUTUBE_WEB }
             DeckPage.PLAYER -> LyricsPlayer(np) { page = DeckPage.HOME }
+            DeckPage.YOUTUBE_WEB -> YouTubeWebPage { page = DeckPage.HOME }
         }
 
         Surface(
@@ -445,7 +450,7 @@ private fun DriveDeckApp(openApp: (String, String?) -> Unit) {
 }
 
 @Composable
-private fun HomeDashboard(np: NowPlaying, openApp: (String, String?) -> Unit, onOpenPlayer: () -> Unit) {
+private fun HomeDashboard(np: NowPlaying, openApp: (String, String?) -> Unit, onOpenPlayer: () -> Unit, onOpenYouTubeWeb: () -> Unit) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -480,7 +485,7 @@ private fun HomeDashboard(np: NowPlaying, openApp: (String, String?) -> Unit, on
             }
             Row(Modifier.weight(1.15f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 EntertainmentTile("YouTube Web", "Video & music", "▶", Modifier.weight(1f).fillMaxHeight()) {
-                    openApp("https://www.youtube.com", null)
+                    onOpenYouTubeWeb()
                 }
                 EntertainmentTile("RTMKlik", "TV & radio", "▣", Modifier.weight(1f).fillMaxHeight()) {
                     openApp("https://rtmklik.rtm.gov.my", null)
@@ -548,6 +553,42 @@ private fun EntertainmentTile(title: String, subtitle: String, symbol: String, m
                 Text(subtitle, color = Muted, fontSize = 12.sp)
             }
         }
+    }
+}
+
+
+@Composable
+private fun YouTubeWebPage(onBack: () -> Unit) {
+    Column(Modifier.fillMaxSize().background(Ink)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text("YOUTUBE WEB", color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Built-in browser • youtube.com", color = Muted, fontSize = 11.sp)
+            }
+            TextButton(onClick = onBack) { Text("HOME  ⌂", color = White) }
+        }
+        AndroidView(
+            modifier = Modifier.fillMaxSize().padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+                .clip(RoundedCornerShape(16.dp)),
+            factory = { context ->
+                WebView(context).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.mediaPlaybackRequiresUserGesture = true
+                    settings.loadsImagesAutomatically = true
+                    webViewClient = WebViewClient()
+                    webChromeClient = WebChromeClient()
+                    loadUrl("https://www.youtube.com")
+                }
+            },
+            update = { webView ->
+                if (webView.url.isNullOrBlank()) webView.loadUrl("https://www.youtube.com")
+            }
+        )
     }
 }
 
