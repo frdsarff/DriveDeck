@@ -559,36 +559,74 @@ private fun EntertainmentTile(title: String, subtitle: String, symbol: String, m
 
 @Composable
 private fun YouTubeWebPage(onBack: () -> Unit) {
+    val context = LocalContext.current
+    var browser by remember { mutableStateOf<WebView?>(null) }
+    var canGoBack by remember { mutableStateOf(false) }
+    var canGoForward by remember { mutableStateOf(false) }
+    var pageTitle by remember { mutableStateOf("youtube.com") }
+
     Column(Modifier.fillMaxSize().background(Ink)) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text("YOUTUBE WEB", color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text("Built-in browser • youtube.com", color = Muted, fontSize = 11.sp)
+                Text(pageTitle, color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            TextButton(onClick = onBack) { Text("HOME  ⌂", color = White) }
+            TextButton(
+                enabled = canGoBack,
+                onClick = { browser?.let { if (it.canGoBack()) it.goBack() } }
+            ) { Text("←", color = White) }
+            TextButton(
+                enabled = canGoForward,
+                onClick = { browser?.let { if (it.canGoForward()) it.goForward() } }
+            ) { Text("→", color = White) }
+            TextButton(onClick = { browser?.reload() }) { Text("↻", color = White) }
+            TextButton(onClick = onBack) { Text("HOME ⌂", color = White) }
         }
+
         AndroidView(
             modifier = Modifier.fillMaxSize().padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
                 .clip(RoundedCornerShape(16.dp)),
-            factory = { context ->
-                WebView(context).apply {
+            factory = { viewContext ->
+                WebView(viewContext).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
-                    settings.mediaPlaybackRequiresUserGesture = true
                     settings.loadsImagesAutomatically = true
-                    webViewClient = WebViewClient()
+                    settings.mediaPlaybackRequiresUserGesture = true
+                    settings.javaScriptCanOpenWindowsAutomatically = false
+                    settings.setSupportMultipleWindows(false)
+                    settings.useWideViewPort = true
+                    settings.loadWithOverviewMode = true
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView, url: String) {
+                            canGoBack = view.canGoBack()
+                            canGoForward = view.canGoForward()
+                            pageTitle = view.title?.takeIf { it.isNotBlank() } ?: Uri.parse(url).host.orEmpty()
+                        }
+                    }
                     webChromeClient = WebChromeClient()
+                    browser = this
                     loadUrl("https://www.youtube.com")
                 }
             },
             update = { webView ->
+                browser = webView
                 if (webView.url.isNullOrBlank()) webView.loadUrl("https://www.youtube.com")
             }
         )
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            browser?.stopLoading()
+            browser?.webChromeClient = null
+            browser?.webViewClient = WebViewClient()
+            browser?.destroy()
+            browser = null
+        }
     }
 }
 
