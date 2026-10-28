@@ -228,8 +228,9 @@ private class LyricsScreen(
         }.coerceAtLeast(0)
     }
 
-    // Dipanggil oleh LyricsSession apabila sesi ditutup.
-    fun dispose() {
+    override fun onDestroy() {
+        // Stop lyric polling and media observers when Android Auto closes this screen.
         scope.cancel()
+        super.onDestroy()
     }
 }
