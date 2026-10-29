@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.drivedeck"
         minSdk = 28
         targetSdk = 35
-        versionCode = 200
-        versionName = "2.0.0"
+        versionCode = 201
+        versionName = "2.0.1"
     }
 
     compileOptions {
@@ -28,4 +28,5 @@ android {
 dependencies {
     implementation("androidx.car.app:app:1.7.0")
     implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.media:media:1.7.0")
 }
