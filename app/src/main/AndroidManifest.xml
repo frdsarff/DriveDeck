@@ -1,22 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
-
-    <queries>
-        <package android:name="com.spotify.music" />
-        <package android:name="com.google.android.apps.youtube.music" />
-        <package android:name="com.google.android.youtube" />
-        <package android:name="com.waze" />
-        <package android:name="com.google.android.apps.maps" />
-    </queries>
-
     <application
-        android:label="DriveDeck"
-        android:theme="@android:style/Theme.Material.NoActionBar">
-
+        android:allowBackup="true"
+        android:label="DriveDeck 2.0"
+        android:theme="@android:style/Theme.Material.NoActionBar"
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -25,51 +14,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
         <service
-            android:name=".PlaybackService"
-            android:exported="true"
-            android:foregroundServiceType="mediaPlayback">
+            android:name=".car.DriveDeckCarAppService"
+            android:exported="true">
             <intent-filter>
-                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="androidx.car.app.CarAppService" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.media.browse.MediaBrowserService" />
-            </intent-filter>
+            <meta-data
+                android:name="androidx.car.app.minCarApiLevel"
+                android:value="1" />
+            <meta-data
+                android:name="androidx.car.app.category"
+                android:value="POI" />
         </service>
-
-        <service
-            android:name=".bridge.MediaBridgeListener"
-            android:exported="true"
-            android:label="DriveDeck Media Access"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
-            <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService" />
-            </intent-filter>
-        </service>
-
-        <service
-    android:name=".car.LyricsCarAppService"
-    android:exported="true"
-    android:permission="androidx.car.app.BIND_CAR_APP"
-    android:label="DriveDeck Lyrics">
-
-    <intent-filter>
-        <action android:name="androidx.car.app.CarAppService" />
-    </intent-filter>
-
-    <meta-data
-        android:name="androidx.car.app.minCarApiLevel"
-        android:value="1" />
-
-    <meta-data
-        android:name="androidx.car.app.category"
-        android:value="IOT" />
-</service>
-
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
-
     </application>
 </manifest>
