@@ -1,28 +1,25 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DriveDeck 2.0</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>DriveDeck</title>
 <style>
-:root { color-scheme: dark; font-family: system-ui, sans-serif; }
-* { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; padding: 24px; display: grid; place-items: center; background: #101218; color: #f4f6fa; }
-main { width: min(100%, 560px); padding: 28px; border-radius: 24px; background: #1b202b; border: 1px solid #30394a; }
-.kicker { color: #9caac0; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
-h1 { margin: 12px 0; font-size: 32px; }
-p { color: #c4ccda; line-height: 1.55; }
-.card { margin-top: 12px; padding: 16px; border-radius: 16px; background: #252d3b; }
+:root{color-scheme:dark;--bg:#080b12;--panel:#111824;--line:#253144;--mint:#59f0c2;--muted:#98a7ba}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0%,#203b47 0,transparent 38%),var(--bg);color:#f6f8fc;font:15px system-ui,-apple-system,sans-serif;min-height:100vh}
+.app{max-width:760px;margin:auto;padding:22px 18px 30px}.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#69f5c8,#1a8f9b);display:grid;place-items:center;color:#071017;font-weight:900;font-size:20px;box-shadow:0 0 28px #59f0c233}.name{font-size:17px;font-weight:800;letter-spacing:.08em}.sub{font-size:11px;color:var(--muted);letter-spacing:.16em;margin-top:2px}.pill{border:1px solid #2c4350;border-radius:99px;padding:8px 11px;color:var(--mint);font-size:11px}
+.hero{border:1px solid var(--line);background:linear-gradient(135deg,#172331ee,#10151fee);border-radius:26px;padding:18px;overflow:hidden;position:relative;box-shadow:0 16px 50px #0005}.hero:before{content:"";position:absolute;width:240px;height:240px;border-radius:50%;background:#1ca58b18;filter:blur(30px);right:-90px;top:-80px}.label{font-size:11px;letter-spacing:.16em;color:var(--mint);font-weight:700}.now{display:grid;grid-template-columns:116px 1fr;gap:18px;align-items:center;margin-top:15px}.art{width:116px;aspect-ratio:1;border-radius:20px;background:linear-gradient(135deg,#31485b,#121924);display:grid;place-items:center;border:1px solid #ffffff18;font-size:38px;color:#6af0c6;overflow:hidden}.art span{filter:drop-shadow(0 4px 12px #0008)}h1{font-size:22px;line-height:1.18;margin:0 0 7px;overflow-wrap:anywhere}.artist{color:#b4c0d0;font-size:14px}.source{color:var(--mint);font-size:10px;letter-spacing:.13em;margin-top:10px}.progress{height:4px;border-radius:10px;background:#344152;margin:19px 0 9px;overflow:hidden}.bar{height:100%;width:32%;background:var(--mint);border-radius:10px}.times{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}.controls{display:flex;gap:10px;margin-top:17px}.btn{border:1px solid #344354;background:#1b2634;color:white;border-radius:50%;width:42px;height:42px;display:grid;place-items:center;font-size:16px}.btn.play{background:var(--mint);color:#071017;border:0;width:48px;height:48px;font-size:19px}.section{margin-top:22px}.sectionhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}.sectionhead h2{font-size:13px;letter-spacing:.13em;margin:0}.small{font-size:11px;color:var(--muted)}.lyrics{border:1px solid var(--line);background:#101722d9;border-radius:22px;padding:18px 18px 20px;min-height:142px;position:relative;overflow:hidden}.lyric{font-size:16px;line-height:1.6;color:#68798c;margin:5px 0}.lyric.active{color:#fff;font-size:19px;font-weight:750}.lyric.next{color:#a8b5c5}.empty{color:#9aa9ba;line-height:1.6}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.tile{border:1px solid var(--line);background:#111824;border-radius:18px;padding:15px}.tile .ico{font-size:20px;margin-bottom:12px}.tile b{display:block;font-size:13px}.tile p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.5}.footer{text-align:center;color:#637186;font-size:10px;margin-top:23px;letter-spacing:.1em}
+@media(min-width:600px){.app{padding:30px}.now{grid-template-columns:140px 1fr}.art{width:140px}.hero{padding:23px}.grid{grid-template-columns:repeat(4,1fr)}}
 </style>
 </head>
-<body>
-<main>
-  <div class="kicker">Version 2.0.0 · Starter</div>
-  <h1>DriveDeck</h1>
-  <p>Clean rebuild started. This is the phone-side HTML preview; the car display currently uses supported Android Auto templates.</p>
-  <div class="card">01 — Android Auto foundation</div>
-  <div class="card">02 — Custom web UI</div>
-  <div class="card">03 — Media and navigation integrations</div>
-</main>
-</body>
-</html>
+<body><div class="app">
+<header class="top"><div class="brand"><div class="logo">D</div><div><div class="name">DRIVEDECK</div><div class="sub">MUSIC • LYRICS • DRIVE</div></div></div><div class="pill">● SYSTEM ONLINE</div></header>
+<section class="hero"><div class="label">NOW PLAYING</div><div class="now"><div class="art"><span>♫</span></div><div><h1 id="title">Waiting for music…</h1><div class="artist" id="artist">Play Spotify or YouTube Music</div><div class="source" id="source">MEDIA SESSION NOT CONNECTED</div><div class="progress"><div class="bar"></div></div><div class="times"><span>LIVE SESSION</span><span id="status">WAITING</span></div><div class="controls"><div class="btn">|◀</div><div class="btn play">▶</div><div class="btn">▶|</div></div></div></div></section>
+<section class="section"><div class="sectionhead"><h2>LYRICS</h2><span class="small" id="lyricStatus">AUTO SYNC</span></div><div class="lyrics" id="lyrics"><div class="lyric active">Your lyrics will appear here</div><div class="lyric next">Start a song to find matching lyrics.</div><div class="lyric">Spotify • YouTube Music</div></div></section>
+<div class="grid"><div class="tile"><div class="ico">♫</div><b>Media session</b><p id="mediaState">Waiting for a supported music app</p></div><div class="tile"><div class="ico">≋</div><b>Synced lyrics</b><p id="syncState">Lyrics are looked up automatically</p></div><div class="tile"><div class="ico">◉</div><b>Android Auto</b><p>Car display integration</p></div><div class="tile"><div class="ico">⌁</div><b>Drive mode</b><p>Dashboard preview</p></div></div>
+<div class="footer">DRIVEDECK 2.0.3 • BUILT FOR THE ROAD</div>
+</div>
+<script>
+function update(s){if(!s)return;document.getElementById('title').textContent=s.title||'Waiting for music…';document.getElementById('artist').textContent=s.artist||'Play Spotify or YouTube Music';document.getElementById('source').textContent=s.source||'MEDIA SESSION NOT CONNECTED';document.getElementById('status').textContent=s.title?'DETECTED':'WAITING';document.getElementById('mediaState').textContent=s.title?'Now playing metadata detected':'Waiting for a supported music app';document.getElementById('syncState').textContent=s.hasLyrics?'Lyrics found':'Searching for matching lyrics';document.getElementById('lyricStatus').textContent=s.hasSynced?'SYNCED LYRICS':'LYRICS';let box=document.getElementById('lyrics');box.innerHTML='';let lines=(s.lines||[]).filter(Boolean).slice(0,3);if(!lines.length){box.innerHTML='<div class="empty">'+(s.title?'No lyrics found yet. Try another track or check internet access.':'Start Spotify or YouTube Music and play a song to begin.')+'</div>';return;}lines.forEach((line,i)=>{let d=document.createElement('div');d.className='lyric '+(i===0?'active':i===1?'next':'');d.textContent=line;box.appendChild(d);});}
+if(window.DriveDeck){try{update(JSON.parse(DriveDeck.getState()))}catch(e){}}
+setInterval(()=>{if(window.DriveDeck){try{update(JSON.parse(DriveDeck.getState()))}catch(e){}}},1000);
+</script></body></html>
