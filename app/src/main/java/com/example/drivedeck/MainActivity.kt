@@ -1,12 +1,13 @@
 package com.example.drivedeck
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.provider.Settings
 import com.example.drivedeck.lyrics.MediaNotificationListener
 import org.json.JSONArray
 import org.json.JSONObject
@@ -24,13 +25,31 @@ class MainActivity : Activity() {
             settings.allowFileAccess = true
             webViewClient = WebViewClient()
             webChromeClient = WebChromeClient()
-            addJavascriptInterface(DashboardBridge(), "DriveDeck")
+            addJavascriptInterface(SettingsBridge(), "DriveDeck")
             loadUrl("file:///android_asset/home.html")
         }
         setContentView(webView)
     }
 
-    inner class DashboardBridge {
+    inner class SettingsBridge {
+        @JavascriptInterface
+        fun openNotificationSettings() {
+            runOnUiThread {
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            }
+        }
+
+        @JavascriptInterface
+        fun getSetting(key: String): String {
+            return getSharedPreferences("drivedeck_settings", MODE_PRIVATE).getString(key, "").orEmpty()
+        }
+
+        @JavascriptInterface
+        fun setSetting(key: String, value: String) {
+            if (key !in setOf("source", "lyrics", "metadata")) return
+            getSharedPreferences("drivedeck_settings", MODE_PRIVATE).edit().putString(key, value).apply()
+        }
+
         @JavascriptInterface
         fun getState(): String {
             val prefs = getSharedPreferences(MediaNotificationListener.PREFS, MODE_PRIVATE)
