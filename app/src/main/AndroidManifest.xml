@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <application
         android:allowBackup="true"
         android:label="DriveDeck 2.0"
@@ -23,11 +26,19 @@
             android:label="DriveDeck 2.0">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
-                <category android:name="androidx.car.app.category.POI" />
+                <category android:name="androidx.car.app.category.NAVIGATION" />
             </intent-filter>
             <meta-data
                 android:name="androidx.car.app.minCarApiLevel"
                 android:value="1" />
+        </service>
+        <service
+            android:name=".media.DriveDeckMediaBrowserService"
+            android:exported="true"
+            android:label="DriveDeck 2.0">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
         </service>
     </application>
 </manifest>
