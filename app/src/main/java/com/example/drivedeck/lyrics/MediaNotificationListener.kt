@@ -64,6 +64,7 @@ class MediaNotificationListener : NotificationListenerService() {
                 Notification.EXTRA_MEDIA_SESSION
             ) ?: return
             val controller = MediaController(this, token)
+            activeController = controller
             val state = controller.playbackState ?: return
             prefs.edit()
                 .putLong("positionMs", state.position.coerceAtLeast(0L))
@@ -98,5 +99,32 @@ class MediaNotificationListener : NotificationListenerService() {
 
     companion object {
         const val PREFS = "drivedeck_lyrics"
+
+        @Volatile
+        private var activeController: MediaController? = null
+
+        /** Send transport commands to the currently detected Spotify / YouTube Music session. */
+        fun controlPlayback(command: String): Boolean {
+            val controller = activeController ?: return false
+            val controls = controller.transportControls
+            return try {
+                when (command) {
+                    "play" -> controls.play()
+                    "pause" -> controls.pause()
+                    "playPause" -> {
+                        if (controller.playbackState?.state == PlaybackState.STATE_PLAYING) controls.pause()
+                        else controls.play()
+                    }
+                    "next" -> controls.skipToNext()
+                    "previous" -> controls.skipToPrevious()
+                    else -> return false
+                }
+                true
+            } catch (_: SecurityException) {
+                false
+            } catch (_: IllegalStateException) {
+                false
+            }
+        }
     }
 }
