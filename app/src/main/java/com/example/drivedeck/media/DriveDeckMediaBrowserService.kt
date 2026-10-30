@@ -7,6 +7,7 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
+import com.example.drivedeck.lyrics.MediaNotificationListener
 
 /**
  * Android Auto browse surface for the current external music session.
@@ -24,8 +25,31 @@ class DriveDeckMediaBrowserService : MediaBrowserServiceCompat() {
                     MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
             )
             setCallback(object : MediaSessionCompat.Callback() {
-                override fun onPlay() = setExternalPlaybackState(PlaybackStateCompat.STATE_PLAYING)
-                override fun onPause() = setExternalPlaybackState(PlaybackStateCompat.STATE_PAUSED)
+                override fun onPlay() {
+                    MediaNotificationListener.controlPlayback("play")
+                    refreshPlaybackState()
+                }
+
+                override fun onPause() {
+                    MediaNotificationListener.controlPlayback("pause")
+                    refreshPlaybackState()
+                }
+
+                override fun onSkipToNext() {
+                    MediaNotificationListener.controlPlayback("next")
+                    refreshPlaybackState()
+                }
+
+                override fun onSkipToPrevious() {
+                    MediaNotificationListener.controlPlayback("previous")
+                    refreshPlaybackState()
+                }
+
+                override fun onMediaButtonEvent(mediaButtonEvent: android.content.Intent?): Boolean {
+                    val handled = MediaNotificationListener.controlPlayback("playPause")
+                    if (handled) refreshPlaybackState()
+                    return handled || super.onMediaButtonEvent(mediaButtonEvent)
+                }
             })
             setPlaybackState(
                 PlaybackStateCompat.Builder()
@@ -42,17 +66,21 @@ class DriveDeckMediaBrowserService : MediaBrowserServiceCompat() {
         sessionToken = mediaSession.sessionToken
     }
 
-    private fun setExternalPlaybackState(state: Int) {
-        // This session is a companion view. It cannot directly control another app's
-        // playback without a separate, explicit MediaController integration.
+    private fun refreshPlaybackState() {
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        val speed = prefs.getFloat("playbackSpeed", 0f)
+        val position = prefs.getLong("positionMs", 0L)
+        val state = if (speed > 0f) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED
         mediaSession.setPlaybackState(
             PlaybackStateCompat.Builder()
                 .setActions(
                     PlaybackStateCompat.ACTION_PLAY or
                         PlaybackStateCompat.ACTION_PAUSE or
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE
+                        PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
                 )
-                .setState(state, 0L, 0f)
+                .setState(state, position, speed)
                 .build()
         )
     }
