@@ -134,8 +134,7 @@ class CarDashboardPresentation(
     private fun readDashboardLayout(): JSONObject {
         val fallback = """{"widgets":[{"id":"clock-1","type":"clock","x":0,"y":0,"w":4,"h":2},{"id":"weather-1","type":"weather","x":4,"y":0,"w":4,"h":2},{"id":"air-1","type":"air","x":8,"y":0,"w":4,"h":2},{"id":"prayer-1","type":"prayer","x":0,"y":2,"w":6,"h":2},{"id":"music-1","type":"music","x":6,"y":2,"w":6,"h":2}]}"""
         return try {
-            val raw = context.getSharedPreferences("drivedeck_settings", Context.MODE_PRIVATE)
-                .getString("dashboardLayout", fallback) ?: fallback
+            val raw = dashboardPrefs.getString("dashboardLayout", fallback) ?: fallback
             JSONObject(raw)
         } catch (e: Exception) {
             Log.w(TAG, "Invalid saved dashboard layout; using defaults", e)
