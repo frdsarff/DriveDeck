@@ -2,6 +2,7 @@ package com.example.drivedeck.car
 
 import android.app.Presentation
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
@@ -23,6 +24,15 @@ class CarDashboardPresentation(
     initialDiagnostics: SurfaceDiagnostics
 ) : Presentation(outerContext, display, android.R.style.Theme_Black_NoTitleBar_Fullscreen) {
     @Volatile private var currentDiagnostics: SurfaceDiagnostics = initialDiagnostics
+    private val dashboardPrefs: SharedPreferences by lazy {
+        context.getSharedPreferences("drivedeck_settings", Context.MODE_PRIVATE)
+    }
+    private val dashboardPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "dashboardLayout" && !isCleanedUp) {
+            Log.i(TAG, "Dashboard layout changed on phone; updating Android Auto without reconnect")
+            updateDiagnostics(currentDiagnostics)
+        }
+    }
     private var webView: WebView? = null
     private var pageLoaded = false
     private var isCleanedUp = false
@@ -30,6 +40,7 @@ class CarDashboardPresentation(
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.i(TAG, "Presentation.onCreate: displayId=${display.displayId}, name=${display.name}")
+        dashboardPrefs.registerOnSharedPreferenceChangeListener(dashboardPrefsListener)
         window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         try {
             val wv = WebView(context).apply {
@@ -136,6 +147,11 @@ class CarDashboardPresentation(
         if (isCleanedUp) return
         isCleanedUp = true
         pageLoaded = false
+        try {
+            dashboardPrefs.unregisterOnSharedPreferenceChangeListener(dashboardPrefsListener)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to unregister dashboard preference listener", e)
+        }
         val wv = webView
         webView = null
         try { if (isShowing) dismiss() } catch (e: Exception) { Log.w(TAG, "Dismiss failed", e) }
