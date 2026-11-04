@@ -23,15 +23,15 @@
 </div>
 <script>
 const DEFAULT={widgets:[
-{id:'clock-1',type:'clock',x:0,y:0,w:4,h:2},{id:'weather-1',type:'weather',x:4,y:0,w:4,h:2},{id:'air-1',type:'air',x:8,y:0,w:4,h:2},
-{id:'prayer-1',type:'prayer',x:0,y:2,w:6,h:2},{id:'music-1',type:'music',x:6,y:2,w:6,h:2}
+{id:'clock-1',type:'clock',x:0,y:0,w:4,h:2},{id:'weather-1',type:'weather',x:4,y:0,w:4,h:2},{id:'music-1',type:'music',x:8,y:0,w:4,h:2},
+{id:'shortcuts-1',type:'shortcuts',x:0,y:2,w:6,h:2},{id:'map-1',type:'map',x:6,y:2,w:6,h:2}
 ]};
-const TYPES=[['clock','◷','Clock'],['weather','☀','Weather'],['air','≋','Air quality'],['prayer','☾','Prayer times'],['music','♫','Music'],['sports','⚽','Sports'],['shortcuts','▦','Shortcuts'],['map','⌖','Nearby places']];
+const TYPES=[['clock','◷','Clock'],['weather','☀','Weather'],['music','♫','Music'],['shortcuts','▦','Shortcuts'],['map','⌖','Nearby places']];
 const PRESETS=[[2,2,'Small'],[3,3,'Square'],[6,2,'Wide'],[3,6,'Tall'],[6,4,'Large'],[12,2,'Full width']];
 let layout=loadLayout(),selected=null,gesture=null;
 function load(k,d){try{if(window.DriveDeck&&DriveDeck.getSetting){let v=DriveDeck.getSetting(k);return v||d}return localStorage.getItem('dd_'+k)||d}catch(e){return d}}
 function save(k,v){try{if(window.DriveDeck&&DriveDeck.setSetting)DriveDeck.setSetting(k,String(v));else localStorage.setItem('dd_'+k,String(v))}catch(e){}}
-function loadLayout(){try{return JSON.parse(load('dashboardLayout',JSON.stringify(DEFAULT)))}catch(e){return structuredClone(DEFAULT)}}
+function loadLayout(){try{const saved=JSON.parse(load('dashboardLayout',JSON.stringify(DEFAULT)));if(!saved||!Array.isArray(saved.widgets))return structuredClone(DEFAULT);saved.widgets=saved.widgets.filter(w=>TYPES.some(t=>t[0]===w.type));return saved.widgets.length?saved:structuredClone(DEFAULT)}catch(e){return structuredClone(DEFAULT)}}
 function openAccess(){if(window.DriveDeck&&DriveDeck.openNotificationSettings)DriveDeck.openNotificationSettings()}
 function openBuilder(){document.getElementById('settings').style.display='none';document.getElementById('builder').style.display='block';render()}
 function closeBuilder(){document.getElementById('builder').style.display='none';document.getElementById('settings').style.display='block'}
