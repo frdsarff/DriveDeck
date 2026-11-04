@@ -159,7 +159,8 @@ class CarDashboardPresentation(
     }
 
     private fun readDashboardLayout(): JSONObject {
-        val fallback = """{"widgets":[{"id":"clock-1","type":"clock","x":0,"y":0,"w":4,"h":2},{"id":"weather-1","type":"weather","x":4,"y":0,"w":4,"h":2},{"id":"air-1","type":"air","x":8,"y":0,"w":4,"h":2},{"id":"prayer-1","type":"prayer","x":0,"y":2,"w":6,"h":2},{"id":"music-1","type":"music","x":6,"y":2,"w":6,"h":2}]}"""
+        // Default only applies on a clean install. Saved phone layouts remain untouched.
+        val fallback = """{"widgets":[{"id":"clock-1","type":"clock","x":0,"y":0,"w":4,"h":2},{"id":"weather-1","type":"weather","x":4,"y":0,"w":4,"h":2},{"id":"music-1","type":"music","x":8,"y":0,"w":4,"h":2},{"id":"shortcuts-1","type":"shortcuts","x":0,"y":2,"w":6,"h":2}]}"""
         return try {
             val raw = dashboardPrefs.getString("dashboardLayout", fallback) ?: fallback
             JSONObject(raw)
