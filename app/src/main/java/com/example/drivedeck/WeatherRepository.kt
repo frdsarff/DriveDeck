@@ -13,7 +13,6 @@ import androidx.core.content.ContextCompat
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 import java.util.concurrent.Executors
 
 object WeatherRepository {
@@ -72,19 +71,16 @@ object WeatherRepository {
                 val payload = connection.inputStream.bufferedReader().use { it.readText() }
                 val root = JSONObject(payload)
                 val current = root.getJSONObject("current")
-                val code = current.optInt("weather_code", -1)
-                val description = weatherDescription(code)
-                val timezone = root.optString("timezone", "")
-                val place = timezone.substringAfterLast('/', "").replace('_', ' ').ifBlank { "Current location" }
-                val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                prefs.edit()
+                val description = weatherDescription(current.optInt("weather_code", -1))
+                val place = root.optString("timezone", "").substringAfterLast('/', "").replace('_', ' ').ifBlank { "Current location" }
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                     .putBoolean("weatherReady", true)
                     .putString("weatherTemperature", "${current.optDouble("temperature_2m").toInt()}°")
                     .putString("weatherDescription", description)
                     .putString("weatherLocation", place)
                     .putString("weatherFeelsLike", "${current.optDouble("apparent_temperature").toInt()}°")
                     .putInt("weatherHumidity", current.optInt("relative_humidity_2m"))
-                    .putDouble("weatherWind", current.optDouble("wind_speed_10m"))
+                    .putFloat("weatherWind", current.optDouble("wind_speed_10m").toFloat())
                     .putLong("weatherUpdatedAt", System.currentTimeMillis())
                     .apply()
                 callback?.invoke(true, "Weather updated for $place")
