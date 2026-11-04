@@ -18,7 +18,7 @@ function widgetMarkup(w,s){
  else if(w.type==='weather')body='<div class="value">—</div><div class="sub">Weather data not connected yet</div>';
  else if(w.type==='music'){const title=s&&s.musicTitle?s.musicTitle:'No track playing',artist=s&&s.musicArtist?s.musicArtist:'Start Spotify or YouTube Music';body='<div class="disc">♫</div><div class="musicInfo"><div class="value">'+esc(title)+'</div><div class="sub">'+esc(artist)+'</div></div>'}
  else if(w.type==='shortcuts')body='<div class="icons">▣　♫　⌖　☎</div>';
- else if(w.type==='map')body='<div class="value">Nearby places</div><div class="sub">Location data not connected yet</div>';
+
  else body='<div class="value">'+esc(d[1])+'</div><div class="sub">'+esc(d[2])+'</div>';
  return '<section class="widget '+w.type+'" style="grid-column:'+(w.x+1)+' / span '+w.w+';grid-row:'+(w.y+1)+' / span '+w.h+'"><div class="eyebrow">'+d[0]+'</div>'+body+'</section>';
 }
