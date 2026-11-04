@@ -9,6 +9,7 @@
 <div class="label">CAR DASHBOARD</div><section class="panel"><div class="row"><div><b>Show synced lyrics</b><p>Display available lyrics on the Android Auto dashboard.</p></div><input class="toggle" id="lyrics" type="checkbox" onchange="save('lyrics',this.checked)"></div></section>
 <section class="panel"><div class="row"><div><b>Show song metadata</b><p>Artwork, title, artist and current music source.</p></div><input class="toggle" id="metadata" type="checkbox" onchange="save('metadata',this.checked)"></div></section>
 <section class="panel"><b>Dashboard layout</b><p class="note">Customize your car screen from this phone. Add widgets, drag them into place and resize them on a 12-column grid.</p><button class="btn" onclick="openBuilder()">Customize dashboard</button></section>
+<div class="label">WEATHER</div><section class="panel"><b>Local weather</b><p class="note">Allow location access so DriveDeck can show current weather for your area on the car dashboard.</p><button class="btn" onclick="requestWeather()">Enable location & update weather</button><p class="note" id="weatherStatus">Weather is updated from your phone when requested.</p></section>
 <div class="label">PERMISSIONS</div><section class="panel"><b>Music notification access</b><p class="note">Required to read the active Spotify or YouTube Music track.</p><button class="btn" onclick="openAccess()">Open notification access settings</button><p class="note">Enable DriveDeck in Android notification access. Playback remains in Spotify or YouTube Music.</p></section>
 <div class="label">ANDROID AUTO</div><section class="panel"><b>Car display integration</b><p class="note">Your saved phone layout is loaded by the custom car renderer when Android Auto connects.</p></section>
 <div class="footer">DRIVEDECK • SETTINGS & CONTROL</div></div>
@@ -33,6 +34,7 @@ function load(k,d){try{if(window.DriveDeck&&DriveDeck.getSetting){let v=DriveDec
 function save(k,v){try{if(window.DriveDeck&&DriveDeck.setSetting)DriveDeck.setSetting(k,String(v));else localStorage.setItem('dd_'+k,String(v))}catch(e){}}
 function loadLayout(){try{const saved=JSON.parse(load('dashboardLayout',JSON.stringify(DEFAULT)));if(!saved||!Array.isArray(saved.widgets))return structuredClone(DEFAULT);saved.widgets=saved.widgets.filter(w=>TYPES.some(t=>t[0]===w.type));return saved.widgets.length?saved:structuredClone(DEFAULT)}catch(e){return structuredClone(DEFAULT)}}
 function openAccess(){if(window.DriveDeck&&DriveDeck.openNotificationSettings)DriveDeck.openNotificationSettings()}
+function requestWeather(){const s=document.getElementById("weatherStatus");s.textContent="Requesting phone location…";if(window.DriveDeck&&DriveDeck.requestWeatherLocation)DriveDeck.requestWeatherLocation();else s.textContent="Weather permission bridge unavailable."}
 function openBuilder(){document.getElementById('settings').style.display='none';document.getElementById('builder').style.display='block';render()}
 function closeBuilder(){document.getElementById('builder').style.display='none';document.getElementById('settings').style.display='block'}
 function overlaps(a,b){return a!==b&&a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
