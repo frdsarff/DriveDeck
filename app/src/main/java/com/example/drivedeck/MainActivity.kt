@@ -67,6 +67,22 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun getWeatherState(): String {
+            val prefs = getSharedPreferences("drivedeck_settings", MODE_PRIVATE)
+            val permissionGranted =
+                checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            return JSONObject()
+                .put("permissionGranted", permissionGranted)
+                .put("ready", prefs.getBoolean("weatherReady", false))
+                .put("temperature", prefs.getString("weatherTemperature", "").orEmpty())
+                .put("description", prefs.getString("weatherDescription", "").orEmpty())
+                .put("location", prefs.getString("weatherLocation", "").orEmpty())
+                .put("updatedAt", prefs.getLong("weatherUpdatedAt", 0L))
+                .toString()
+        }
+
+        @JavascriptInterface
         fun openNotificationSettings() {
             runOnUiThread {
                 startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
