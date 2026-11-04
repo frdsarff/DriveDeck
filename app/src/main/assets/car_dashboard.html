@@ -15,7 +15,7 @@ function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;'
 function widgetMarkup(w,s){
  const d=DATA[w.type]||DATA.clock;let body='';
  if(w.type==='clock')body='<div class="value" id="liveClock">--:--</div><div class="sub" id="liveDate">Loading local time…</div>';
- else if(w.type==='weather')body='<div class="value">—</div><div class="sub">Weather data not connected yet</div>';
+ else if(w.type==='weather'){const ready=s&&s.weatherReady;const temp=ready?s.weatherTemperature:'—';const desc=ready?(s.weatherDescription||'Current conditions'):'Enable location in phone settings';const place=ready?(s.weatherLocation||'Current location'):'';body='<div class="value">'+esc(temp)+'</div><div class="sub">'+esc(desc)+(place?' • '+esc(place):'')+'</div>'}
  else if(w.type==='music'){const title=s&&s.musicTitle?s.musicTitle:'No track playing',artist=s&&s.musicArtist?s.musicArtist:'Start Spotify or YouTube Music';body='<div class="disc">♫</div><div class="musicInfo"><div class="value">'+esc(title)+'</div><div class="sub">'+esc(artist)+'</div></div>'}
  else if(w.type==='shortcuts')body='<div class="icons">▣　♫　⌖　☎</div>';
 
