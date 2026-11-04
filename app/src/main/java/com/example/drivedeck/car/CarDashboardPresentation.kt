@@ -36,6 +36,9 @@ class CarDashboardPresentation(
             updateDiagnostics(currentDiagnostics)
         }
     }
+    private val weatherPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key?.startsWith("weather") == true && !isCleanedUp) updateDiagnostics(currentDiagnostics)
+    }
     private val lyricsPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key in setOf("title", "artist", "package", "positionMs", "playbackSpeed") && !isCleanedUp) {
             Log.i(TAG, "Media metadata changed; refreshing dashboard")
@@ -51,6 +54,7 @@ class CarDashboardPresentation(
         Log.i(TAG, "Presentation.onCreate: displayId=${display.displayId}, name=${display.name}")
         dashboardPrefs.registerOnSharedPreferenceChangeListener(dashboardPrefsListener)
         lyricsPrefs.registerOnSharedPreferenceChangeListener(lyricsPrefsListener)
+        dashboardPrefs.registerOnSharedPreferenceChangeListener(weatherPrefsListener)
         window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         try {
             val wv = WebView(context).apply {
@@ -164,6 +168,7 @@ class CarDashboardPresentation(
         try {
             dashboardPrefs.unregisterOnSharedPreferenceChangeListener(dashboardPrefsListener)
             lyricsPrefs.unregisterOnSharedPreferenceChangeListener(lyricsPrefsListener)
+            dashboardPrefs.unregisterOnSharedPreferenceChangeListener(weatherPrefsListener)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to unregister dashboard preference listener", e)
         }
