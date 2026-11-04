@@ -147,6 +147,14 @@ class CarDashboardPresentation(
             .put("musicPackage", lyricsPrefs.getString("package", "").orEmpty())
             .put("musicPositionMs", lyricsPrefs.getLong("positionMs", 0L))
             .put("musicPlaybackSpeed", lyricsPrefs.getFloat("playbackSpeed", 0f).toDouble())
+            .put("weatherReady", dashboardPrefs.getBoolean("weatherReady", false))
+            .put("weatherTemperature", dashboardPrefs.getString("weatherTemperature", "").orEmpty())
+            .put("weatherDescription", dashboardPrefs.getString("weatherDescription", "").orEmpty())
+            .put("weatherLocation", dashboardPrefs.getString("weatherLocation", "").orEmpty())
+            .put("weatherFeelsLike", dashboardPrefs.getString("weatherFeelsLike", "").orEmpty())
+            .put("weatherHumidity", dashboardPrefs.getInt("weatherHumidity", 0))
+            .put("weatherWind", dashboardPrefs.getFloat("weatherWind", 0f).toDouble())
+            .put("weatherUpdatedAt", dashboardPrefs.getLong("weatherUpdatedAt", 0L))
             .toString()
     }
 
