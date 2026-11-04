@@ -27,9 +27,18 @@ class CarDashboardPresentation(
     private val dashboardPrefs: SharedPreferences by lazy {
         context.getSharedPreferences("drivedeck_settings", Context.MODE_PRIVATE)
     }
+    private val lyricsPrefs: SharedPreferences by lazy {
+        context.getSharedPreferences("drivedeck_lyrics", Context.MODE_PRIVATE)
+    }
     private val dashboardPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "dashboardLayout" && !isCleanedUp) {
             Log.i(TAG, "Dashboard layout changed on phone; updating Android Auto without reconnect")
+            updateDiagnostics(currentDiagnostics)
+        }
+    }
+    private val lyricsPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key in setOf("title", "artist", "package", "positionMs", "playbackSpeed") && !isCleanedUp) {
+            Log.i(TAG, "Media metadata changed; refreshing dashboard")
             updateDiagnostics(currentDiagnostics)
         }
     }
@@ -41,6 +50,7 @@ class CarDashboardPresentation(
         super.onCreate(savedInstanceState)
         Log.i(TAG, "Presentation.onCreate: displayId=${display.displayId}, name=${display.name}")
         dashboardPrefs.registerOnSharedPreferenceChangeListener(dashboardPrefsListener)
+        lyricsPrefs.registerOnSharedPreferenceChangeListener(lyricsPrefsListener)
         window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         try {
             val wv = WebView(context).apply {
@@ -128,6 +138,11 @@ class CarDashboardPresentation(
             .put("artwork", "")
             .put("lines", lines)
             .put("dashboardLayout", readDashboardLayout())
+            .put("musicTitle", lyricsPrefs.getString("title", "").orEmpty())
+            .put("musicArtist", lyricsPrefs.getString("artist", "").orEmpty())
+            .put("musicPackage", lyricsPrefs.getString("package", "").orEmpty())
+            .put("musicPositionMs", lyricsPrefs.getLong("positionMs", 0L))
+            .put("musicPlaybackSpeed", lyricsPrefs.getFloat("playbackSpeed", 0f).toDouble())
             .toString()
     }
 
@@ -148,6 +163,7 @@ class CarDashboardPresentation(
         pageLoaded = false
         try {
             dashboardPrefs.unregisterOnSharedPreferenceChangeListener(dashboardPrefsListener)
+            lyricsPrefs.unregisterOnSharedPreferenceChangeListener(lyricsPrefsListener)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to unregister dashboard preference listener", e)
         }
