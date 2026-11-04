@@ -1,8 +1,11 @@
 package com.example.drivedeck
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.widget.Toast
 import android.provider.Settings
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -31,7 +34,38 @@ class MainActivity : Activity() {
         setContentView(webView)
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == WEATHER_LOCATION_REQUEST) {
+            if (grantResults.any { it == PackageManager.PERMISSION_GRANTED }) {
+                WeatherRepository.refresh(this) { _, message ->
+                    runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_SHORT).show() }
+                }
+            } else {
+                Toast.makeText(this, "Location permission is needed for local weather", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     inner class SettingsBridge {
+        @JavascriptInterface
+        fun requestWeatherLocation() {
+            runOnUiThread {
+                val fine = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                val coarse = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                if (fine || coarse) {
+                    WeatherRepository.refresh(this@MainActivity) { _, message ->
+                        runOnUiThread { Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show() }
+                    }
+                } else {
+                    requestPermissions(
+                        arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION),
+                        WEATHER_LOCATION_REQUEST
+                    )
+                }
+            }
+        }
+
         @JavascriptInterface
         fun openNotificationSettings() {
             runOnUiThread {
@@ -81,4 +115,6 @@ class MainActivity : Activity() {
     override fun onBackPressed() {
         if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
     }
+
+    companion object { private const val WEATHER_LOCATION_REQUEST = 4102 }
 }
