@@ -34,7 +34,8 @@ function load(k,d){try{if(window.DriveDeck&&DriveDeck.getSetting){let v=DriveDec
 function save(k,v){try{if(window.DriveDeck&&DriveDeck.setSetting)DriveDeck.setSetting(k,String(v));else localStorage.setItem('dd_'+k,String(v))}catch(e){}}
 function loadLayout(){try{const saved=JSON.parse(load('dashboardLayout',JSON.stringify(DEFAULT)));if(!saved||!Array.isArray(saved.widgets))return structuredClone(DEFAULT);saved.widgets=saved.widgets.filter(w=>TYPES.some(t=>t[0]===w.type));return saved.widgets.length?saved:structuredClone(DEFAULT)}catch(e){return structuredClone(DEFAULT)}}
 function openAccess(){if(window.DriveDeck&&DriveDeck.openNotificationSettings)DriveDeck.openNotificationSettings()}
-function requestWeather(){const s=document.getElementById("weatherStatus");s.textContent="Requesting phone location…";if(window.DriveDeck&&DriveDeck.requestWeatherLocation)DriveDeck.requestWeatherLocation();else s.textContent="Weather permission bridge unavailable."}
+function refreshWeatherStatus(){try{if(!window.DriveDeck||!DriveDeck.getWeatherState)return;const w=JSON.parse(DriveDeck.getWeatherState());const s=document.getElementById('weatherStatus');if(w.ready&&w.temperature){s.textContent='✓ Weather updated: '+w.temperature+' • '+(w.description||'Current conditions')+(w.location?' • '+w.location:'')}else if(w.permissionGranted){s.textContent='Location permission granted. Waiting for current weather…'}else{s.textContent='Location permission is not enabled yet.'}}catch(e){}}
+function requestWeather(){const s=document.getElementById("weatherStatus");s.textContent="Requesting phone location…";if(window.DriveDeck&&DriveDeck.requestWeatherLocation){DriveDeck.requestWeatherLocation();setTimeout(refreshWeatherStatus,1200)}else s.textContent="Weather permission bridge unavailable."}
 function openBuilder(){document.getElementById('settings').style.display='none';document.getElementById('builder').style.display='block';render()}
 function closeBuilder(){document.getElementById('builder').style.display='none';document.getElementById('settings').style.display='block'}
 function overlaps(a,b){return a!==b&&a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
@@ -51,4 +52,5 @@ function removeSelected(){layout.widgets=layout.widgets.filter(w=>w.id!==selecte
 function resetLayout(){layout=JSON.parse(JSON.stringify(DEFAULT));selected=null;render()}
 function saveLayout(){const value=JSON.stringify(layout);save('dashboardLayout',value);document.getElementById('status').textContent='✓ Layout saved. Android Auto will refresh the dashboard automatically when connected.'}
 document.getElementById('source').value=load('source','auto');document.getElementById('lyrics').checked=load('lyrics','true')==='true';document.getElementById('metadata').checked=load('metadata','true')==='true';
+refreshWeatherStatus();setInterval(refreshWeatherStatus,1500);
 </script></body></html>
