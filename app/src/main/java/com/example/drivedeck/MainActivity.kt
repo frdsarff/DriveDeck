@@ -7,6 +7,9 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import android.provider.Settings
+import android.app.NotificationManager
+import android.content.ComponentName
+import android.view.WindowInsets
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -32,6 +35,24 @@ class MainActivity : Activity() {
             loadUrl("file:///android_asset/home.html")
         }
         setContentView(webView)
+        webView.setOnApplyWindowInsetsListener { view, insets ->
+            val top = if (android.os.Build.VERSION.SDK_INT >= 30) {
+                insets.getInsets(WindowInsets.Type.statusBars()).top
+            } else {
+                @Suppress("DEPRECATION")
+                insets.systemWindowInsetTop
+            }
+            view.setPadding(0, top, 0, 0)
+            insets
+        }
+        webView.requestApplyInsets()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::webView.isInitialized) {
+            webView.post { webView.evaluateJavascript("if(window.refreshNotificationAccess){refreshNotificationAccess()}", null) }
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -87,6 +108,24 @@ class MainActivity : Activity() {
             runOnUiThread {
                 startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
             }
+        }
+
+        @JavascriptInterface
+        fun getNotificationAccessState(): String {
+            val component = ComponentName(this@MainActivity, MediaNotificationListener::class.java)
+            val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            val granted = if (android.os.Build.VERSION.SDK_INT >= 27) {
+                manager.isNotificationListenerAccessGranted(component)
+            } else {
+                Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+                    ?.contains(component.flattenToString()) == true
+            }
+            val prefs = getSharedPreferences(MediaNotificationListener.PREFS, MODE_PRIVATE)
+            return JSONObject()
+                .put("granted", granted)
+                .put("listenerConnected", prefs.getBoolean("listenerConnected", false))
+                .put("lastDetectedPackage", prefs.getString("lastDetectedPackage", "").orEmpty())
+                .toString()
         }
 
         @JavascriptInterface
