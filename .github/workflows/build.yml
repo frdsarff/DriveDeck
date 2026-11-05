@@ -37,6 +37,32 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 
+      - name: Package latest Gemini source files
+        run: |
+          mkdir -p gemini-source
+          cp app/build.gradle.kts gemini-source/
+          cp app/src/main/AndroidManifest.xml gemini-source/
+          cp app/src/main/res/xml/automotive_app_desc.xml gemini-source/
+          cp app/src/main/java/com/example/drivedeck/MainActivity.kt gemini-source/
+          cp app/src/main/java/com/example/drivedeck/car/DriveDeckCarAppService.kt gemini-source/
+          cp app/src/main/java/com/example/drivedeck/car/HomeScreen.kt gemini-source/
+          cp app/src/main/java/com/example/drivedeck/lyrics/MediaNotificationListener.kt gemini-source/
+          cp app/src/main/assets/car_dashboard.html gemini-source/
+          cp app/src/main/assets/home.html gemini-source/
+          cat > gemini-source/README.txt <<'EOF'
+          DriveDeck latest source snapshot for Gemini.
+          Branch: experimental-custom-renderer
+          This archive contains the 9 current files from Gemini's original 10-file list.
+          DriveDeckMediaBrowserService.kt is intentionally absent: it was removed from this branch and is not part of the current architecture. Do not restore it without reviewing the current CarAppService + SurfaceCallback implementation.
+          EOF
+          cd gemini-source && zip -r ../DriveDeck-latest-source-for-Gemini.zip .
+      - name: Upload Gemini source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: DriveDeck-Latest-Source-for-Gemini
+          path: DriveDeck-latest-source-for-Gemini.zip
+          if-no-files-found: error
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
