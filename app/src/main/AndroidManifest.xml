@@ -44,15 +44,6 @@
         </service>
 
         <service
-            android:name=".media.DriveDeckMediaBrowserService"
-            android:exported="true"
-            android:label="DriveDeck 2.0">
-            <intent-filter>
-                <action android:name="android.media.browse.MediaBrowserService" />
-            </intent-filter>
-        </service>
-
-        <service
             android:name=".lyrics.MediaNotificationListener"
             android:label="DriveDeck song detection"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"

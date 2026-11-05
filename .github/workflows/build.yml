@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - experimental-custom-renderer
+      - remove-media-browser-service
   workflow_dispatch:
 
 permissions:
