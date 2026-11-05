@@ -23,5 +23,4 @@ android {
 dependencies {
     implementation("androidx.car.app:app:1.7.0")
     implementation("androidx.core:core-ktx:1.17.0")
-    implementation("androidx.media:media:1.7.0")
 }
