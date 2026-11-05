@@ -1,35 +1,92 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>DriveDeck Dashboard</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>DriveDeck Dashboard</title>
 <style>
-:root{color-scheme:dark;--bg:#080d17;--panel:#111c2c;--line:#293c54;--cyan:#55dff4;--mint:#54edc4;--muted:#9aacc1}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#f4f8ff;font:16px system-ui,Roboto,sans-serif}body{background:radial-gradient(ellipse at 10% 0%,#123b5b 0,transparent 48%),radial-gradient(ellipse at 100% 100%,#073e49 0,transparent 42%),var(--bg)}#dashboard{height:100%;padding:2.2vh 2.2vw;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr));gap:1.1vh 1vw}.widget{min-width:0;min-height:0;overflow:hidden;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#17283bed,#101a2af2);padding:1.5vh 1.4vw;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 8px 24px #0003}.eyebrow{font-size:clamp(9px,1.25vh,13px);font-weight:800;letter-spacing:.15em;color:var(--cyan);text-transform:uppercase}.value{font-size:clamp(22px,5vh,58px);font-weight:800;line-height:1.05;letter-spacing:-.04em}.sub{font-size:clamp(10px,1.6vh,17px);color:#b4c4d7}.clock .value{font-size:clamp(34px,7vh,82px)}.weather .value{font-size:clamp(28px,5.5vh,62px)}.music{flex-direction:row;align-items:center;gap:1vw}.disc{width:22%;max-height:100%;aspect-ratio:1;border-radius:13px;background:linear-gradient(135deg,#23607c,#12243a);display:grid;place-items:center;color:var(--cyan);font-size:clamp(22px,4vh,44px)}.musicInfo{min-width:0;flex:1}.musicInfo .value{font-size:clamp(15px,2.7vh,29px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.musicInfo .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shortcuts .icons{display:flex;gap:10px;align-items:center;font-size:clamp(18px,3.4vh,36px);color:var(--cyan)}#footer{position:absolute;bottom:3px;right:1vw;font-size:8px;color:#73879d;letter-spacing:.1em}
-</style></head><body><main id="dashboard"></main><div id="footer"></div>
+:root{color-scheme:dark;--bg:#080d17;--panel:#111c2c;--line:#293c54;--cyan:#55dff4;--mint:#54edc4;--muted:#9aacc1}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#f4f8ff;font:16px system-ui,Roboto,sans-serif}
+body{background:radial-gradient(ellipse at 10% 0%,#123b5b 0,transparent 48%),radial-gradient(ellipse at 100% 100%,#073e49 0,transparent 42%),var(--bg)}
+#dashboard{height:100%;padding:2.2vh 2.2vw;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));gap:1.1vh 1vw}
+.widget{min-width:0;min-height:0;overflow:hidden;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#17283bed,#101a2af2);padding:1.5vh 1.4vw;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 8px 24px #0003}
+.eyebrow{font-size:clamp(9px,1.25vh,13px);font-weight:800;letter-spacing:.15em;color:var(--cyan);text-transform:uppercase}
+.value{font-size:clamp(18px,4.5vh,58px);font-weight:800;line-height:1.05;letter-spacing:-.04em;overflow:hidden;text-overflow:ellipsis}
+.sub{font-size:clamp(10px,1.6vh,17px);color:#b4c4d7;overflow:hidden;text-overflow:ellipsis}
+.clock .value{font-size:clamp(30px,6.5vh,82px)}
+.weather .value{font-size:clamp(25px,5vh,62px)}
+.music{flex-direction:row;align-items:center;gap:1vw}
+.disc{width:22%;max-height:100%;aspect-ratio:1;border-radius:13px;background:linear-gradient(135deg,#23607c,#12243a);display:grid;place-items:center;color:var(--cyan);font-size:clamp(22px,4vh,44px);flex:none}
+.musicInfo{min-width:0;flex:1;overflow:hidden}
+.musicInfo .value{font-size:clamp(14px,2.7vh,29px);white-space:nowrap}
+.musicInfo .sub{white-space:nowrap}
+.shortcuts .icons{display:flex;gap:10px;align-items:center;font-size:clamp(18px,3.4vh,36px);color:var(--cyan)}
+.weatherDetails{display:flex;gap:1.2em;flex-wrap:wrap;font-size:clamp(9px,1.3vh,13px);color:#b4c4d7}
+#footer{position:absolute;bottom:3px;right:1vw;font-size:8px;color:#73879d;letter-spacing:.1em;pointer-events:none}
+</style>
+</head>
+<body>
+<main id="dashboard"></main><div id="footer"></div>
 <script>
-const DEFAULT={widgets:[{id:'clock-1',type:'clock',x:0,y:0,w:4,h:2},{id:'weather-1',type:'weather',x:4,y:0,w:4,h:2},{id:'music-1',type:'music',x:8,y:0,w:4,h:2},{id:'shortcuts-1',type:'shortcuts',x:0,y:2,w:6,h:2}]};
+const DEFAULT={widgets:[
+{id:'clock-1',type:'clock',x:0,y:0,w:4,h:2},
+{id:'weather-1',type:'weather',x:4,y:0,w:4,h:2},
+{id:'music-1',type:'music',x:8,y:0,w:4,h:2},
+{id:'shortcuts-1',type:'shortcuts',x:0,y:2,w:6,h:2}
+]};
 const DATA={
-clock:['LOCAL TIME','04:44','Thursday • 5 November'],
-weather:['WEATHER','29°','Partly cloudy • Selangor'],
-music:['NOW PLAYING','No track playing','Open Spotify or YouTube Music'],
-shortcuts:['QUICK APPS','Shortcuts','Maps  •  Music  •  Phone'],
-
+clock:['LOCAL TIME'],weather:['WEATHER'],music:['NOW PLAYING'],shortcuts:['QUICK APPS']
 };
+const ALLOWED=new Set(['clock','weather','music','shortcuts']);
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
-function widgetMarkup(w,s){
- const d=DATA[w.type]||DATA.clock;let body='';
- if(w.type==='clock')body='<div class="value" id="liveClock">--:--</div><div class="sub" id="liveDate">Loading local time…</div>';
- else if(w.type==='weather'){const ready=s&&s.weatherReady;const temp=ready?s.weatherTemperature:'—';const desc=ready?(s.weatherDescription||'Current conditions'):'Enable location in phone settings';const place=ready?(s.weatherLocation||'Current location'):'';body='<div class="value">'+esc(temp)+'</div><div class="sub">'+esc(desc)+(place?' • '+esc(place):'')+'</div>'}
- else if(w.type==='music'){const title=s&&s.musicTitle?s.musicTitle:'No track playing',artist=s&&s.musicArtist?s.musicArtist:'Start Spotify or YouTube Music';body='<div class="disc">♫</div><div class="musicInfo"><div class="value">'+esc(title)+'</div><div class="sub">'+esc(artist)+'</div></div>'}
- else if(w.type==='shortcuts')body='<div class="icons">▣　♫　⌖　☎</div>';
-
- else body='<div class="value">'+esc(d[1])+'</div><div class="sub">'+esc(d[2])+'</div>';
- return '<section class="widget '+w.type+'" style="grid-column:'+(w.x+1)+' / span '+w.w+';grid-row:'+(w.y+1)+' / span '+w.h+'"><div class="eyebrow">'+d[0]+'</div>'+body+'</section>';
+function validWidget(w){
+ if(!w||!ALLOWED.has(w.type))return false;
+ const x=Number(w.x),y=Number(w.y),width=Number(w.w),height=Number(w.h);
+ return Number.isInteger(x)&&Number.isInteger(y)&&Number.isInteger(width)&&Number.isInteger(height)&&x>=0&&y>=0&&width>=2&&height>=2&&x+width<=12&&y+height<=8;
 }
-function updateClock(){const now=new Date(),clock=document.getElementById('liveClock'),date=document.getElementById('liveDate');if(clock)clock.textContent=new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit',hour12:false}).format(now);if(date)date.textContent=new Intl.DateTimeFormat(undefined,{weekday:'long',day:'numeric',month:'long'}).format(now)}
+function cleanLayout(raw){
+ const source=raw&&raw.dashboardLayout&&Array.isArray(raw.dashboardLayout.widgets)?raw.dashboardLayout:DEFAULT;
+ const accepted=[];
+ for(const item of source.widgets){
+  if(!validWidget(item))continue;
+  const candidate={id:String(item.id||item.type+'-'+accepted.length),type:item.type,x:Number(item.x),y:Number(item.y),w:Number(item.w),h:Number(item.h)};
+  const overlaps=accepted.some(a=>candidate.x<a.x+a.w&&candidate.x+candidate.w>a.x&&candidate.y<a.y+a.h&&candidate.y+candidate.h>a.y);
+  if(!overlaps)accepted.push(candidate);
+ }
+ return accepted.length?accepted:DEFAULT.widgets;
+}
+function widgetMarkup(w,s){
+ let body='';
+ if(w.type==='clock')body='<div class="value" id="liveClock">--:--</div><div class="sub" id="liveDate">Loading local time…</div>';
+ else if(w.type==='weather'){
+  const ready=!!(s&&s.weatherReady),temp=ready?(s.weatherTemperature||'—'):'—';
+  const desc=ready?(s.weatherDescription||'Current conditions'):'Enable location in phone settings';
+  const place=ready?(s.weatherLocation||'Current location'):'';
+  const extra=ready?'<div class="weatherDetails"><span>Feels '+esc(s.weatherFeelsLike||'—')+'</span><span>Humidity '+esc(s.weatherHumidity||'—')+'%</span><span>Wind '+esc(s.weatherWind||'—')+'</span></div>':'';
+  body='<div class="value">'+esc(temp)+'</div><div class="sub">'+esc(desc)+(place?' • '+esc(place):'')+'</div>'+extra;
+ }else if(w.type==='music'){
+  const title=s&&s.musicTitle?s.musicTitle:'No track playing',artist=s&&s.musicArtist?s.musicArtist:'Start Spotify or YouTube Music';
+  body='<div class="disc">♫</div><div class="musicInfo"><div class="value">'+esc(title)+'</div><div class="sub">'+esc(artist)+'</div></div>';
+ }else if(w.type==='shortcuts')body='<div class="icons">▣　♫　⌖　☎</div><div class="sub">Maps　•　Music　•　Phone</div>';
+ return '<section class="widget '+w.type+'" style="grid-column:'+(w.x+1)+' / span '+w.w+';grid-row:'+(w.y+1)+' / span '+w.h+'"><div class="eyebrow">'+DATA[w.type][0]+'</div>'+body+'</section>';
+}
+function updateClock(){
+ const now=new Date(),clock=document.getElementById('liveClock'),date=document.getElementById('liveDate');
+ if(clock)clock.textContent=new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
+ if(date)date.textContent=new Intl.DateTimeFormat(undefined,{weekday:'long',day:'numeric',month:'long'}).format(now);
+}
 function render(s){
- const cfg=s&&s.dashboardLayout&&Array.isArray(s.dashboardLayout.widgets)?s.dashboardLayout:DEFAULT;
- const allowed=new Set(['clock','weather','music','shortcuts']);
- const widgets=cfg.widgets.filter(w=>allowed.has(w.type));
- document.getElementById('dashboard').innerHTML=widgets.map(w=>widgetMarkup(w,s)).join('');
+ const widgets=cleanLayout(s);
+ document.getElementById('dashboard').innerHTML=widgets.map(w=>widgetMarkup(w,s||{})).join('');
  document.getElementById('footer').textContent='DRIVEDECK • CUSTOM DASHBOARD • '+(s&&s.width?s.width+'×'+s.height:'');
  updateClock();
 }
-try{if(window.DriveDeckCar&&DriveDeckCar.getState)render(JSON.parse(DriveDeckCar.getState()));else render({dashboardLayout:DEFAULT})}catch(e){render({dashboardLayout:DEFAULT})}setInterval(updateClock,1000);
-</script></body></html>
+try{
+ if(window.DriveDeckCar&&DriveDeckCar.getState)render(JSON.parse(DriveDeckCar.getState()));
+ else render({dashboardLayout:DEFAULT});
+}catch(e){console.error('DriveDeck dashboard initialization failed',e);render({dashboardLayout:DEFAULT})}
+setInterval(updateClock,1000);
+</script>
+</body>
+</html>
