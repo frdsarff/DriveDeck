@@ -40,9 +40,19 @@ class MediaNotificationListener : NotificationListenerService() {
         val knownPlayer = pkg == "com.spotify.music" ||
             pkg == "com.google.android.apps.youtube.music" ||
             pkg == "com.google.android.youtube"
-        // Accept any app publishing an Android media-session notification (e.g. BitChord),
+        val preferredSource = getSharedPreferences("drivedeck_settings", MODE_PRIVATE)
+            .getString("source", "auto") ?: "auto"
+        val matchesPreferredSource = when (preferredSource) {
+            "spotify" -> pkg == "com.spotify.music"
+            "ytmusic" -> pkg == "com.google.android.apps.youtube.music" ||
+                pkg == "com.google.android.youtube"
+            else -> true
+        }
+        if (!matchesPreferredSource) return
+        // Accept any app publishing a media-session notification in Auto mode,
         // while retaining Spotify / YouTube Music notification fallback when no token exists.
-        if (!knownPlayer && token == null) return
+        if (preferredSource == "auto" && !knownPlayer && token == null) return
+        if (preferredSource != "auto" && !knownPlayer) return
 
         val controller = try { token?.let { MediaController(this, it) } } catch (_: Exception) { null }
         if (controller != null) activeController = controller
