@@ -14,31 +14,70 @@ import java.net.URLEncoder
 import kotlin.concurrent.thread
 
 class MediaNotificationListener : NotificationListenerService() {
-    override fun onNotificationPosted(sbn: StatusBarNotification) {
-        val pkg = sbn.packageName
-        if (pkg != "com.spotify.music" &&
-            pkg != "com.google.android.apps.youtube.music") return
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putBoolean("listenerConnected", true)
+            .apply()
+    }
 
-        val extras = sbn.notification.extras ?: return
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-        val artist = (extras.getCharSequence(Notification.EXTRA_TEXT)
-            ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT))?.toString()?.trim().orEmpty()
-        if (title.isBlank() || title == "Spotify" || title == "YouTube Music") return
+    override fun onListenerDisconnected() {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putBoolean("listenerConnected", false)
+            .apply()
+        activeController = null
+        super.onListenerDisconnected()
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        val notification = sbn.notification ?: return
+        val extras = notification.extras ?: return
+        val token = try {
+            extras.getParcelable<android.media.session.MediaSession.Token>(Notification.EXTRA_MEDIA_SESSION)
+        } catch (_: Exception) { null }
+
+        val pkg = sbn.packageName
+        val knownPlayer = pkg == "com.spotify.music" ||
+            pkg == "com.google.android.apps.youtube.music" ||
+            pkg == "com.google.android.youtube"
+        // Accept any app publishing an Android media-session notification (e.g. BitChord),
+        // while retaining Spotify / YouTube Music notification fallback when no token exists.
+        if (!knownPlayer && token == null) return
+
+        val controller = try { token?.let { MediaController(this, it) } } catch (_: Exception) { null }
+        if (controller != null) activeController = controller
+        val metadata = controller?.metadata
+        val title = (extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+            ?.takeIf { it.isNotBlank() && it != "Spotify" && it != "YouTube Music" }
+            ?: metadata?.getString(android.media.MediaMetadata.METADATA_KEY_TITLE))
+            ?.trim().orEmpty()
+        val artist = (metadata?.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST)
+            ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
+            ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString())
+            ?.trim().orEmpty()
+        if (title.isBlank()) return
 
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-        if (prefs.getString("title", "") == title && prefs.getString("artist", "") == artist) {
+        prefs.edit()
+            .putBoolean("listenerConnected", true)
+            .putString("lastDetectedPackage", pkg)
+            .putString("title", title)
+            .putString("artist", artist)
+            .putString("package", pkg)
+            .putLong("updatedAt", SystemClock.elapsedRealtime())
+            .apply()
+
+        if (prefs.getString("title", "") == title && prefs.getString("artist", "") == artist &&
+            (prefs.getString("lyrics", "").orEmpty().isNotBlank() ||
+             prefs.getString("syncedLyrics", "").orEmpty().isNotBlank())) {
             updatePlaybackPosition(sbn, prefs)
             return
         }
 
         prefs.edit()
-            .putString("title", title)
-            .putString("artist", artist)
-            .putString("package", pkg)
             .putString("lyrics", "")
             .putString("syncedLyrics", "")
             .putLong("positionMs", 0L)
-            .putLong("updatedAt", SystemClock.elapsedRealtime())
             .apply()
         updatePlaybackPosition(sbn, prefs)
         thread(name = "DriveDeckLyricsLookup") {
@@ -52,10 +91,7 @@ class MediaNotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        if (sbn.packageName == "com.spotify.music" ||
-            sbn.packageName == "com.google.android.apps.youtube.music") {
-            // Keep the last song visible if the music app briefly refreshes its notification.
-        }
+        // Keep the last song visible while media apps refresh their notification.
     }
 
     private fun updatePlaybackPosition(sbn: StatusBarNotification, prefs: android.content.SharedPreferences) {
@@ -72,7 +108,7 @@ class MediaNotificationListener : NotificationListenerService() {
                 .putLong("updatedAt", SystemClock.elapsedRealtime())
                 .apply()
         } catch (_: Exception) {
-            // Some music app notifications do not expose a media-session token.
+            // Some players do not expose a media-session token in notification extras.
         }
     }
 
