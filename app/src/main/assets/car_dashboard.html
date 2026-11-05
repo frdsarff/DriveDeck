@@ -70,8 +70,12 @@ function widgetMarkup(w,s){
   const extra=ready?'<div class="weatherDetails"><span>Feels '+esc(s.weatherFeelsLike||'—')+'</span><span>Humidity '+esc(s.weatherHumidity||'—')+'%</span><span>Wind '+esc(s.weatherWind||'—')+'</span></div>':'';
   body='<div class="value">'+esc(temp)+'</div><div class="sub">'+esc(desc)+(place?' • '+esc(place):'')+'</div>'+extra;
  }else if(w.type==='music'){
-  const title=s&&s.musicTitle?s.musicTitle:'No track playing',artist=s&&s.musicArtist?s.musicArtist:'Start Spotify or YouTube Music';
-  const playing=!!(s&&s.musicIsPlaying),lyric=currentLyric(s);body='<div class="disc">♫</div><div class="musicInfo"><div class="value">'+esc(title)+'</div><div class="sub">'+esc(artist)+'</div><div class="musicActions"><button onclick="musicAction(\'previous\')" aria-label="Previous">|◀</button><button class="primary" onclick="musicAction(\'playPause\')" aria-label="Play or pause">'+(playing?'Ⅱ':'▶')+'</button><button onclick="musicAction(\'next\')" aria-label="Next">▶|</button></div><div class="lyricLine">'+esc(lyric||(playing?'♪ Playing':'Lyrics will appear here'))+'</div></div>';
+  const showMetadata=!(s&&s.showMetadata===false),showLyrics=!(s&&s.showLyrics===false);
+  const title=showMetadata?(s&&s.musicTitle?s.musicTitle:'No track playing'):'Music controls';
+  const artist=showMetadata?(s&&s.musicArtist?s.musicArtist:'Start Spotify or YouTube Music'):'Track details hidden in settings';
+  const playing=!!(s&&s.musicIsPlaying),lyric=showLyrics?currentLyric(s):'';
+  const lyricMarkup=showLyrics?'<div class="lyricLine">'+esc(lyric||(playing?'♪ Playing':'Lyrics will appear here'))+'</div>':'';
+  body='<div class="disc">♫</div><div class="musicInfo"><div class="value">'+esc(title)+'</div><div class="sub">'+esc(artist)+'</div><div class="musicActions"><button onclick="musicAction(\'previous\')" aria-label="Previous">|◀</button><button class="primary" onclick="musicAction(\'playPause\')" aria-label="Play or pause">'+(playing?'Ⅱ':'▶')+'</button><button onclick="musicAction(\'next\')" aria-label="Next">▶|</button></div>'+lyricMarkup+'</div>';
  }else if(w.type==='shortcuts')body='<div class="icons">▣　♫　⌖　☎</div><div class="sub">Maps　•　Music　•　Phone</div>';
  return '<section class="widget '+w.type+'" style="grid-column:'+(w.x+1)+' / span '+w.w+';grid-row:'+(w.y+1)+' / span '+w.h+'"><div class="eyebrow">'+DATA[w.type][0]+'</div>'+body+'</section>';
 }
