@@ -25,6 +25,7 @@ class MediaNotificationListener : NotificationListenerService() {
         getSharedPreferences(PREFS, MODE_PRIVATE).edit()
             .putBoolean("listenerConnected", false)
             .apply()
+        activeController = null
         super.onListenerDisconnected()
     }
 
@@ -44,6 +45,7 @@ class MediaNotificationListener : NotificationListenerService() {
         if (!knownPlayer && token == null) return
 
         val controller = try { token?.let { MediaController(this, it) } } catch (_: Exception) { null }
+        if (controller != null) activeController = controller
         val metadata = controller?.metadata
         val title = (extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
             ?.takeIf { it.isNotBlank() && it != "Spotify" && it != "YouTube Music" }
@@ -102,6 +104,7 @@ class MediaNotificationListener : NotificationListenerService() {
                 Notification.EXTRA_MEDIA_SESSION
             ) ?: return
             val controller = MediaController(this, token)
+            activeController = controller
             val state = controller.playbackState ?: return
             prefs.edit()
                 .putLong("positionMs", state.position.coerceAtLeast(0L))
@@ -137,5 +140,31 @@ class MediaNotificationListener : NotificationListenerService() {
     companion object {
         const val PREFS = "drivedeck_lyrics"
 
+        @Volatile
+        private var activeController: MediaController? = null
+
+        /** Keep dashboard transport controls working without exposing a MediaBrowserService. */
+        fun controlPlayback(command: String): Boolean {
+            val controller = activeController ?: return false
+            val controls = controller.transportControls
+            return try {
+                when (command) {
+                    "play" -> controls.play()
+                    "pause" -> controls.pause()
+                    "playPause" -> {
+                        if (controller.playbackState?.state == PlaybackState.STATE_PLAYING) controls.pause()
+                        else controls.play()
+                    }
+                    "next" -> controls.skipToNext()
+                    "previous" -> controls.skipToPrevious()
+                    else -> return false
+                }
+                true
+            } catch (_: SecurityException) {
+                false
+            } catch (_: IllegalStateException) {
+                false
+            }
+        }
     }
 }
