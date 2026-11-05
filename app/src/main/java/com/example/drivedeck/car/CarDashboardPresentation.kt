@@ -17,6 +17,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import org.json.JSONArray
 import org.json.JSONObject
+import com.example.drivedeck.lyrics.MediaNotificationListener
 
 class CarDashboardPresentation(
     outerContext: Context,
@@ -147,6 +148,9 @@ class CarDashboardPresentation(
             .put("musicPackage", lyricsPrefs.getString("package", "").orEmpty())
             .put("musicPositionMs", lyricsPrefs.getLong("positionMs", 0L))
             .put("musicPlaybackSpeed", lyricsPrefs.getFloat("playbackSpeed", 0f).toDouble())
+            .put("musicIsPlaying", lyricsPrefs.getFloat("playbackSpeed", 0f) > 0f)
+            .put("musicSyncedLyrics", lyricsPrefs.getString("syncedLyrics", "").orEmpty())
+            .put("musicLyrics", lyricsPrefs.getString("lyrics", "").orEmpty())
             .put("weatherReady", dashboardPrefs.getBoolean("weatherReady", false))
             .put("weatherTemperature", dashboardPrefs.getString("weatherTemperature", "").orEmpty())
             .put("weatherDescription", dashboardPrefs.getString("weatherDescription", "").orEmpty())
@@ -197,7 +201,11 @@ class CarDashboardPresentation(
 
     inner class PoCDashboardBridge {
         @JavascriptInterface fun getState(): String = buildPoCStateJson(currentDiagnostics)
-        @JavascriptInterface fun action(name: String) { Log.i(TAG, "DriveDeckCar.action('$name') no-op in layout PoC") }
+        @JavascriptInterface fun action(name: String): Boolean {
+            val handled = MediaNotificationListener.controlPlayback(name)
+            Log.i(TAG, "DriveDeckCar.action('$name'): handled=$handled")
+            return handled
+        }
     }
 
     companion object {
