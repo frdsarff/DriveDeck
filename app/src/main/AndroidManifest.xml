@@ -45,7 +45,8 @@
 
         <service
             android:name=".media.DriveDeckMediaBrowserService"
-            android:exported="true"
+            android:enabled="false"
+            android:exported="false"
             android:label="DriveDeck 2.0">
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
