@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - experimental-custom-renderer
+      - feature/custom-music-player-page
   workflow_dispatch:
 
 permissions:
