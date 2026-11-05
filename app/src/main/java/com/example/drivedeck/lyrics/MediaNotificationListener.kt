@@ -58,6 +58,9 @@ class MediaNotificationListener : NotificationListenerService() {
         if (title.isBlank()) return
 
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        val sameTrack = prefs.getString("title", "") == title &&
+            prefs.getString("artist", "") == artist &&
+            prefs.getString("package", "") == pkg
         prefs.edit()
             .putBoolean("listenerConnected", true)
             .putString("lastDetectedPackage", pkg)
@@ -67,18 +70,19 @@ class MediaNotificationListener : NotificationListenerService() {
             .putLong("updatedAt", SystemClock.elapsedRealtime())
             .apply()
 
-        if (prefs.getString("title", "") == title && prefs.getString("artist", "") == artist &&
-            (prefs.getString("lyrics", "").orEmpty().isNotBlank() ||
-             prefs.getString("syncedLyrics", "").orEmpty().isNotBlank())) {
+        if (sameTrack && (prefs.getString("lyrics", "").orEmpty().isNotBlank() ||
+            prefs.getString("syncedLyrics", "").orEmpty().isNotBlank())) {
             updatePlaybackPosition(sbn, prefs)
             return
         }
 
-        prefs.edit()
-            .putString("lyrics", "")
-            .putString("syncedLyrics", "")
-            .putLong("positionMs", 0L)
-            .apply()
+        if (!sameTrack) {
+            prefs.edit()
+                .putString("lyrics", "")
+                .putString("syncedLyrics", "")
+                .putLong("positionMs", 0L)
+                .apply()
+        }
         updatePlaybackPosition(sbn, prefs)
         thread(name = "DriveDeckLyricsLookup") {
             lookupLyrics(title, artist)?.let { result ->
