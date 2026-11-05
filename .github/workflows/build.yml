@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - experimental-custom-renderer
+      - fix/aa-navigation-only-build156
   workflow_dispatch:
 
 permissions:
