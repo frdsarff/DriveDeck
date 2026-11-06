@@ -16,24 +16,24 @@ body{background:radial-gradient(ellipse at 10% 0%,#123b5b 0,transparent 48%),rad
 .sub{font-size:clamp(10px,1.6vh,17px);color:#b4c4d7;overflow:hidden;text-overflow:ellipsis}
 .clock .value{font-size:clamp(30px,6.5vh,82px)}
 .weather .value{font-size:clamp(25px,5vh,62px)}
-.music{display:grid;grid-template-columns:minmax(120px,22%) minmax(160px,25%) minmax(0,1fr);grid-template-rows:1fr;align-items:center;gap:1.5vw}
+.music{display:grid;grid-template-columns:minmax(145px,25%) minmax(145px,22%) minmax(0,1fr);grid-template-rows:1fr;align-items:center;gap:1.5vw}
 .music>.eyebrow{display:none}
-.albumColumn{height:100%;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:1vh}
+.albumColumn{height:100%;min-height:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1vh}
 .albumColumn .eyebrow{display:block}
 .disc{width:min(100%,24vh);max-height:calc(100% - 3vh);aspect-ratio:1;border-radius:13px;background:linear-gradient(135deg,#23607c,#12243a);display:grid;place-items:center;color:var(--cyan);font-size:clamp(22px,4vh,44px);flex:none}
 .musicInfo{min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
 .musicInfo .value{font-size:clamp(14px,2.7vh,29px);white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .musicInfo .sub{white-space:nowrap}
-.musicActions{display:flex;align-items:center;gap:8px;margin-top:1.5vh}
+.musicActions{display:flex;align-items:center;gap:8px;margin-top:1vh;justify-content:center;width:min(100%,24vh)}
 .musicActions button{border:1px solid #3b617b;background:#17334a;color:#eafaff;border-radius:999px;min-width:clamp(34px,4.2vh,48px);height:clamp(30px,4.2vh,44px);font-size:clamp(14px,2vh,20px);font-weight:800;padding:0 10px}
 .musicActions button.primary{background:#1c7180;border-color:#55dff4}
-.lyricsPanel{height:78%;min-width:0;overflow:hidden;border-left:1px solid #29445d;padding:0 1.5vw;display:flex;flex-direction:column;justify-content:center;gap:1.3vh}
+.lyricsPanel{height:58%;min-width:0;overflow:hidden;border-left:1px solid #29445d;padding:0 1.5vw;display:flex;flex-direction:column;justify-content:center;gap:1.3vh;align-self:center}
 .lyricsHeading{font-size:clamp(9px,1.15vh,12px);font-weight:800;letter-spacing:.15em;color:var(--cyan);text-transform:uppercase}
 .lyricLine{font-size:var(--lyrics-font-size,25px);line-height:1.35;color:#8fa6bd;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:1.35em}
 .lyricLine.active{font-size:var(--lyrics-active-font-size,32px);font-weight:750;color:var(--mint);text-shadow:0 0 18px #54edc433}
 .lyricLine.next{color:#d5e2ef}
 .lyricsEmpty{font-size:clamp(12px,1.8vh,18px);color:#8fa6bd;line-height:1.5}
-@media(max-width:700px){.music{grid-template-columns:24% 30% minmax(0,1fr);gap:1vw}.lyricsPanel{padding:0 1vw}.musicActions{gap:4px}.musicActions button{min-width:30px;padding:0 6px}}
+@media(max-width:700px){.music{grid-template-columns:26% 22% minmax(0,1fr);gap:1vw}.lyricsPanel{padding:0 1vw}.musicActions{gap:4px}.musicActions button{min-width:30px;padding:0 6px}}
 .shortcuts .icons{display:flex;gap:10px;align-items:center;font-size:clamp(18px,3.4vh,36px);color:var(--cyan)}
 .weatherDetails{display:flex;gap:1.2em;flex-wrap:wrap;font-size:clamp(9px,1.3vh,13px);color:#b4c4d7}
 #footer{position:absolute;bottom:3px;right:1vw;font-size:8px;color:#73879d;letter-spacing:.1em;pointer-events:none}
@@ -83,7 +83,7 @@ function widgetMarkup(w,s){
   const title=showMetadata?(s&&s.musicTitle?s.musicTitle:'No track playing'):'Music controls';
   const artist=showMetadata?(s&&s.musicArtist?s.musicArtist:'Start Spotify or YouTube Music'):'Track details hidden in settings';
   const playing=!!(s&&s.musicIsPlaying);
-  body='<div class="albumColumn"><div class="eyebrow">NOW PLAYING</div><div class="disc">♫</div></div><div class="musicInfo"><div class="value">'+esc(title)+'</div><div class="sub">'+esc(artist)+'</div><div class="musicActions"><button onclick="musicAction(\'previous\')" aria-label="Previous">|◀</button><button class="primary" onclick="musicAction(\'playPause\')" aria-label="Play or pause">'+(playing?'Ⅱ':'▶')+'</button><button onclick="musicAction(\'next\')" aria-label="Next">▶|</button></div></div><div class="lyricsPanel" id="lyricsPanel">'+(showLyrics?'<div class="lyricsHeading">LYRICS</div><div class="lyricLine" id="lyricPrevious"></div><div class="lyricLine active" id="lyricCurrent">'+(playing?'♪ Playing':'Lyrics will appear here')+'</div><div class="lyricLine next" id="lyricNext"></div>':'<div class="lyricsEmpty">Lyrics hidden in settings</div>')+'</div>';
+  body='<div class="albumColumn"><div class="eyebrow">NOW PLAYING</div><div class="disc">♫</div><div class="musicActions"><button onclick="musicAction(\'previous\')" aria-label="Previous">|◀</button><button class="primary" onclick="musicAction(\'playPause\')" aria-label="Play or pause">'+(playing?'Ⅱ':'▶')+'</button><button onclick="musicAction(\'next\')" aria-label="Next">▶|</button></div></div><div class="musicInfo"><div class="value">'+esc(title)+'</div><div class="sub">'+esc(artist)+'</div></div><div class="lyricsPanel" id="lyricsPanel">'+(showLyrics?'<div class="lyricsHeading">LYRICS</div><div class="lyricLine" id="lyricPrevious"></div><div class="lyricLine active" id="lyricCurrent">'+(playing?'♪ Playing':'Lyrics will appear here')+'</div><div class="lyricLine next" id="lyricNext"></div>':'<div class="lyricsEmpty">Lyrics hidden in settings</div>')+'</div>';
  }else if(w.type==='shortcuts')body='<div class="icons">▣　♫　⌖　☎</div><div class="sub">Maps　•　Music　•　Phone</div>';
  return '<section class="widget '+w.type+'" style="grid-column:'+(w.x+1)+' / span '+w.w+';grid-row:'+(w.y+1)+' / span '+w.h+'"><div class="eyebrow">'+DATA[w.type][0]+'</div>'+body+'</section>';
 }
