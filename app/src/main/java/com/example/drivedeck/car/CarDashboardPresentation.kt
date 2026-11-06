@@ -12,6 +12,7 @@ import android.view.Display
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.view.View
+import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -62,6 +63,9 @@ class CarDashboardPresentation(
     private var dashboardView: WebView? = null
     private var pageLoaded = false
     private var isCleanedUp = false
+    private var scrollGestureActive = false
+    private var scrollPointerX = 0f
+    private var scrollPointerY = 0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,6 +74,7 @@ class CarDashboardPresentation(
         lyricsPrefs.registerOnSharedPreferenceChangeListener(lyricsPrefsListener)
         dashboardPrefs.registerOnSharedPreferenceChangeListener(weatherPrefsListener)
         window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         try {
             val wv = WebView(context).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -132,6 +137,7 @@ class CarDashboardPresentation(
      */
     fun dispatchDashboardClick(x: Float, y: Float) {
         if (isCleanedUp) return
+        scrollGestureActive = false
         val root = presentationRoot ?: return
         root.post {
             if (isCleanedUp || presentationRoot !== root || root.width <= 0 || root.height <= 0) {
@@ -155,6 +161,58 @@ class CarDashboardPresentation(
     }
 
 
+
+    /** Forward Android Auto scroll deltas as a continuous WebView touch gesture. */
+    fun dispatchDashboardScroll(distanceX: Float, distanceY: Float) {
+        if (isCleanedUp || !distanceX.isFinite() || !distanceY.isFinite()) return
+        val root = presentationRoot ?: return
+        root.post {
+            if (isCleanedUp || presentationRoot !== root || root.width <= 0 || root.height <= 0) return@post
+            val now = SystemClock.uptimeMillis()
+            if (!scrollGestureActive) {
+                scrollPointerX = root.width / 2f
+                scrollPointerY = root.height / 2f
+                val down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, scrollPointerX, scrollPointerY, 0)
+                root.dispatchTouchEvent(down)
+                down.recycle()
+                scrollGestureActive = true
+            }
+            scrollPointerX = (scrollPointerX - distanceX).coerceIn(0f, (root.width - 1).toFloat())
+            scrollPointerY = (scrollPointerY - distanceY).coerceIn(0f, (root.height - 1).toFloat())
+            val move = MotionEvent.obtain(now, now + 16L, MotionEvent.ACTION_MOVE, scrollPointerX, scrollPointerY, 0)
+            root.dispatchTouchEvent(move)
+            move.recycle()
+        }
+    }
+
+    /** Finish the scroll with a short velocity-based swipe so WebView can fling. */
+    fun dispatchDashboardFling(velocityX: Float, velocityY: Float) {
+        if (isCleanedUp || !velocityX.isFinite() || !velocityY.isFinite()) return
+        val root = presentationRoot ?: return
+        root.post {
+            if (isCleanedUp || presentationRoot !== root || root.width <= 0 || root.height <= 0) return@post
+            val now = SystemClock.uptimeMillis()
+            if (!scrollGestureActive) {
+                scrollPointerX = root.width / 2f
+                scrollPointerY = root.height / 2f
+                val down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, scrollPointerX, scrollPointerY, 0)
+                root.dispatchTouchEvent(down)
+                down.recycle()
+            }
+            val targetX = (scrollPointerX - velocityX * 0.10f).coerceIn(0f, (root.width - 1).toFloat())
+            val targetY = (scrollPointerY - velocityY * 0.10f).coerceIn(0f, (root.height - 1).toFloat())
+            val move = MotionEvent.obtain(now, now + 80L, MotionEvent.ACTION_MOVE, targetX, targetY, 0)
+            val up = MotionEvent.obtain(now, now + 100L, MotionEvent.ACTION_UP, targetX, targetY, 0)
+            root.dispatchTouchEvent(move)
+            root.dispatchTouchEvent(up)
+            move.recycle()
+            up.recycle()
+            scrollGestureActive = false
+            scrollPointerX = targetX
+            scrollPointerY = targetY
+        }
+    }
+
     private fun openYoutubePage() {
         if (isCleanedUp) return
         val root = presentationRoot ?: return
@@ -171,6 +229,8 @@ class CarDashboardPresentation(
                     loadWithOverviewMode = true
                     useWideViewPort = true
                 }
+                isFocusable = true
+                isFocusableInTouchMode = true
                 webChromeClient = WebChromeClient()
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -224,6 +284,8 @@ class CarDashboardPresentation(
         (youtubeWebView?.tag as? View)?.visibility = View.VISIBLE
         val page = youtubeWebView
         if (page != null && page.url.isNullOrBlank()) page.loadUrl("https://m.youtube.com/")
+        page?.isFocusableInTouchMode = true
+        page?.requestFocus(View.FOCUS_DOWN)
         Log.i(TAG, "YouTube Web page opened inside DriveDeck")
     }
 
