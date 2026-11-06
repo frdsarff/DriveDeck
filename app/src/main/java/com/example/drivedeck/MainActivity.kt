@@ -135,7 +135,7 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun setSetting(key: String, value: String) {
-            if (key !in setOf("source", "lyrics", "metadata", "dashboardLayout")) return
+            if (key !in setOf("source", "lyrics", "metadata", "lyricsFontSize", "dashboardLayout")) return
             getSharedPreferences("drivedeck_settings", MODE_PRIVATE).edit().putString(key, value).apply()
         }
 
