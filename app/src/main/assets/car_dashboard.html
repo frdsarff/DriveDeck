@@ -68,12 +68,13 @@ function cleanLayout(raw){
  const accepted=[];
  for(const item of source.widgets){
   if(!validWidget(item))continue;
-  const candidate={id:String(item.id||item.type+'-'+accepted.length),type:item.type,style:item.type==='clock'&&['digital-date','digital','analog-date','analog','minimal'].includes(item.style)?item.style:'digital-date',x:Number(item.x),y:Number(item.y),w:Number(item.w),h:Number(item.h)};
+  const candidate={id:String(item.id||item.type+'-'+accepted.length),type:item.type,style:item.type==='clock'&&['digital-date','digital','analog-date','analog','minimal'].includes(item.style)?item.style:'digital-date',color:typeof item.color==='string'&&/^#[0-9a-f]{6}$/i.test(item.color)?item.color:'',opacity:Number.isFinite(Number(item.opacity))?Math.max(0,Math.min(100,Number(item.opacity))):100,x:Number(item.x),y:Number(item.y),w:Number(item.w),h:Number(item.h)};
   const overlaps=accepted.some(a=>candidate.x<a.x+a.w&&candidate.x+candidate.w>a.x&&candidate.y<a.y+a.h&&candidate.y+candidate.h>a.y);
   if(!overlaps)accepted.push(candidate);
  }
  return accepted.length?accepted:DEFAULT.widgets;
 }
+function colorRgba(hex,alpha){const n=parseInt(hex.slice(1),16);return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+Math.max(0,Math.min(1,alpha))+')'}
 function widgetMarkup(w,s){
  let body='';
  if(w.type==='clock'){const style=['digital-date','digital','analog-date','analog','minimal'].includes(w.style)?w.style:'digital-date';if(style==='analog'||style==='analog-date')body='<div class="clockFace"><span class="clockHand hour" id="clockHour"></span><span class="clockHand minute" id="clockMinute"></span></div><div class="value" id="liveClock" style="display:none">--:--</div>'+(style==='analog-date'?'<div class="sub" id="liveDate">Loading date…</div>':'');else body='<div class="value" id="liveClock">--:--</div>'+(style==='digital'||style==='minimal'? (style==='minimal'?'<div class="sub" id="liveDate">Loading date…</div>':'') : '<div class="sub" id="liveDate">Loading date…</div>');}
@@ -90,7 +91,8 @@ function widgetMarkup(w,s){
   const playing=!!(s&&s.musicIsPlaying);
   body='<div class="playerColumn"><div class="eyebrow">NOW PLAYING</div><div class="disc">♫</div><div class="musicInfo"><div class="value">'+esc(title)+'</div><div class="sub">'+esc(artist)+'</div></div><div class="musicActions"><button onclick="musicAction(\'previous\')" aria-label="Previous">|◀</button><button class="primary" onclick="musicAction(\'playPause\')" aria-label="Play or pause">'+(playing?'Ⅱ':'▶')+'</button><button onclick="musicAction(\'next\')" aria-label="Next">▶|</button></div></div><div class="lyricsPanel" id="lyricsPanel">'+(showLyrics?'<div class="lyricsHeading">LYRICS</div><div class="lyricLine" id="lyricPrevious"></div><div class="lyricLine active" id="lyricCurrent">'+(playing?'♪ Playing':'Lyrics will appear here')+'</div><div class="lyricLine next" id="lyricNext"></div>':'<div class="lyricsEmpty">Lyrics hidden in settings</div>')+'</div>';
  }else if(w.type==='shortcuts')body='<div class="appGrid"><a class="appTile" href="#" onclick="openYoutubeWeb(event)" aria-label="YouTube Web" title="YouTube Web"><svg class="youtubeIcon" viewBox="0 0 48 34" aria-hidden="true"><rect x="1" y="1" width="46" height="32" rx="9" fill="#ff0033"/><path d="M20 10.5L32 17 20 23.5Z" fill="white"/></svg></a></div>';
- return '<section class="widget '+w.type+(w.type==='clock'?' clock-style-'+(w.style||'digital-date'):'')+'" style="grid-column:'+(w.x+1)+' / span '+w.w+';grid-row:'+(w.y+1)+' / span '+w.h+'"><div class="eyebrow">'+DATA[w.type][0]+'</div>'+body+'</section>';
+ const appearance=w.color?'background-color:'+colorRgba(w.color,w.opacity/100)+';background-image:none;':'';
+ return '<section class="widget '+w.type+(w.type==='clock'?' clock-style-'+(w.style||'digital-date'):'')+'" style="grid-column:'+(w.x+1)+' / span '+w.w+';grid-row:'+(w.y+1)+' / span '+w.h+';'+appearance+'"><div class="eyebrow">'+DATA[w.type][0]+'</div>'+body+'</section>';
 }
 let latestState={};
 function updateLyrics(){
