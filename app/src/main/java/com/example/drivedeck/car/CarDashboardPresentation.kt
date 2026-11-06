@@ -132,21 +132,21 @@ class CarDashboardPresentation(
      */
     fun dispatchDashboardClick(x: Float, y: Float) {
         if (isCleanedUp) return
-        val wv = webView ?: return
-        wv.post {
-            if (isCleanedUp || webView !== wv || wv.width <= 0 || wv.height <= 0) {
-                Log.w(TAG, "dispatchDashboardClick: WebView is not ready")
+        val root = presentationRoot ?: return
+        root.post {
+            if (isCleanedUp || presentationRoot !== root || root.width <= 0 || root.height <= 0) {
+                Log.w(TAG, "dispatchDashboardClick: Presentation root is not ready")
                 return@post
             }
-            val px = x.coerceIn(0f, (wv.width - 1).toFloat())
-            val py = y.coerceIn(0f, (wv.height - 1).toFloat())
+            val px = x.coerceIn(0f, (root.width - 1).toFloat())
+            val py = y.coerceIn(0f, (root.height - 1).toFloat())
             val downTime = SystemClock.uptimeMillis()
             val down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, px, py, 0)
             val up = MotionEvent.obtain(downTime, downTime + 60L, MotionEvent.ACTION_UP, px, py, 0)
             try {
-                wv.dispatchTouchEvent(down)
-                wv.dispatchTouchEvent(up)
-                Log.i(TAG, "Dashboard tap dispatched to WebView at ($px, $py)")
+                root.dispatchTouchEvent(down)
+                root.dispatchTouchEvent(up)
+                Log.i(TAG, "Presentation tap dispatched at ($px, $py)")
             } finally {
                 down.recycle()
                 up.recycle()
