@@ -21,7 +21,7 @@ body{background:radial-gradient(ellipse at 10% 0%,#123b5b 0,transparent 48%),rad
 .playerColumn{height:100%;min-height:0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8vh;padding-left:.5vw;padding-right:.5vw}
 .playerColumn .eyebrow{display:block;align-self:center}
 .disc{width:min(100%,19vh);max-height:19vh;aspect-ratio:1;align-self:center;border-radius:13px;background:linear-gradient(135deg,#23607c,#12243a);display:grid;place-items:center;color:var(--cyan);font-size:clamp(22px,4vh,44px);flex:none}
-.musicInfo{width:100%;min-width:0;overflow:hidden;display:flex;flex-direction:column;.align-items-center;justify-content:center;align-items:center;gap:.2vh}
+.musicInfo{width:100%;min-width:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2vh}
 .musicInfo .value{font-size:clamp(16px,3vh,32px);font-weight:700;line-height:1.2;text-align:center;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .musicInfo .sub{font-size:clamp(12px,2vh,21px);line-height:1.25;text-align:center;white-space:normal;overflow:hidden;text-overflow:ellipsis;max-width:100%;color:#a9bbcc}
 .musicActions{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:.5vh;width:100%}
@@ -101,7 +101,7 @@ function updateLyrics(){
   if(value)entries.push({ms:ms,text:value});
  }
  if(!entries.length){previous.textContent='';current.textContent=latestState.musicLyrics||'No synced lyrics available';next.textContent='';return;}
- const elapsed=Date.now()-(latestState._receivedAt||Date.now());
+ const elapsed=performance.now()-(latestState._receivedAt||performance.now());
  const pos=Number(latestState.musicPositionMs||0)+(latestState.musicIsPlaying?elapsed*Number(latestState.musicPlaybackSpeed||0):0);
  let active=-1;
  for(let i=0;i<entries.length;i++){if(entries[i].ms<=pos)active=i;else break;}
@@ -116,7 +116,7 @@ function updateClock(){
  if(date)date.textContent=new Intl.DateTimeFormat(undefined,{weekday:'long',day:'numeric',month:'long'}).format(now);
 }
 function render(s){
- latestState=Object.assign({},s||{},{_receivedAt:Date.now()});
+ latestState=Object.assign({},s||{},{_receivedAt:performance.now()});
  const lyricSize=Math.max(14,Math.min(36,Number(latestState.lyricsFontSize)||25));
  document.documentElement.style.setProperty('--lyrics-font-size',lyricSize+'px');
  document.documentElement.style.setProperty('--lyrics-active-font-size',Math.round(lyricSize*1.28)+'px');
