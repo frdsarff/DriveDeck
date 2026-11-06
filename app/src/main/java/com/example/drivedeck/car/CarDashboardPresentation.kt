@@ -344,7 +344,10 @@ class CarDashboardPresentation(
                   else if(label==='123'){board.dataset.numeric=board.dataset.numeric==='1'?'0':'1';b.textContent=board.dataset.numeric==='1'?'ABC':'123';return;}
                   else {
                     let ch=label;
-                    if(board.dataset.numeric==='1'){const map={q:'1',w:'2',e:'3',r:'4',t:'5',y:'6',u:'7',i:'8',o:'9',p:'0',a:'-',s:'/',d:':',f:';',g:'(',h:')',j:'
+                    if(board.dataset.numeric==='1'){
+                      const map={q:"1",w:"2",e:"3",r:"4",t:"5",y:"6",u:"7",i:"8",o:"9",p:"0",a:"-",s:"/",d:":",f:";",g:"(",h:")",j:"$",k:"&",l:"@",z:"!",x:"?",c:"'",v:"\"",b:"#",n:"%",m:"+"};
+                      ch=map[ch]||ch;
+                    } else if(board.dataset.shift==='1') ch=ch.toUpperCase();
                     target.setRangeText(ch,start,end,'end');
                     board.dataset.shift='0';
                   }
