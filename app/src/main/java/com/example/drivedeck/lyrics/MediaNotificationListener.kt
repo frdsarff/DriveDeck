@@ -2,6 +2,10 @@ package com.example.drivedeck.lyrics
 
 import android.app.Notification
 import android.media.session.MediaController
+import android.media.session.MediaSessionManager
+import android.content.ComponentName
+import android.os.Handler
+import android.os.Looper
 import android.media.session.PlaybackState
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -14,6 +18,73 @@ import java.net.URLEncoder
 import kotlin.concurrent.thread
 
 class MediaNotificationListener : NotificationListenerService() {
+    private val sessionHandler = Handler(Looper.getMainLooper())
+    @Volatile private var listenerReady = false
+    private val sessionRefresh = object : Runnable {
+        override fun run() {
+            refreshActiveSession()
+            if (listenerReady) sessionHandler.postDelayed(this, 1000L)
+        }
+    }
+
+    private fun refreshActiveSession() {
+        try {
+            val manager = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val sessions = manager.getActiveSessions(ComponentName(this, MediaNotificationListener::class.java))
+            val source = getSharedPreferences("drivedeck_settings", MODE_PRIVATE)
+                .getString("source", "auto") ?: "auto"
+            val controller = sessions.firstOrNull { session ->
+                when (source) {
+                    "spotify" -> session.packageName == "com.spotify.music"
+                    "ytmusic" -> session.packageName == "com.google.android.apps.youtube.music" ||
+                        session.packageName == "com.google.android.youtube"
+                    else -> session.packageName == "com.spotify.music" ||
+                        session.packageName == "com.google.android.apps.youtube.music" ||
+                        session.packageName == "com.google.android.youtube"
+                }
+            } ?: return
+
+            activeController = controller
+            attachPlaybackUpdates(controller)
+            controller.playbackState?.let { persistPlaybackState(it) }
+
+            val metadata = controller.metadata ?: return
+            val title = metadata.getString(android.media.MediaMetadata.METADATA_KEY_TITLE)?.trim().orEmpty()
+            val artist = metadata.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST)?.trim().orEmpty()
+            if (title.isBlank()) return
+
+            val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+            val sameTrack = prefs.getString("title", "") == title &&
+                prefs.getString("artist", "") == artist &&
+                prefs.getString("package", "") == controller.packageName
+            if (!sameTrack) {
+                prefs.edit().putString("title", title).putString("artist", artist)
+                    .putString("package", controller.packageName)
+                    .putString("lyrics", "").putString("syncedLyrics", "")
+                    .putLong("positionMs", 0L).apply()
+                thread(name = "DriveDeckSessionLyricsLookup") {
+                    lookupLyrics(title, artist)?.let { result ->
+                        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                            .putString("lyrics", result.optString("plainLyrics", ""))
+                            .putString("syncedLyrics", result.optString("syncedLyrics", "")).apply()
+                    }
+                }
+            }
+        } catch (_: SecurityException) {
+            // Notification-listener access may briefly be unavailable during reconnection.
+        } catch (_: Exception) {
+            // Media sessions can disappear momentarily during calls or app switching.
+        }
+    }
+
+    override fun onDestroy() {
+        listenerReady = false
+        sessionHandler.removeCallbacks(sessionRefresh)
+        try { registeredController?.unregisterCallback(playbackCallback) } catch (_: Exception) {}
+        registeredController = null
+        activeController = null
+        super.onDestroy()
+    }
     private var registeredController: MediaController? = null
     private val playbackCallback = object : MediaController.Callback() {
         override fun onPlaybackStateChanged(state: PlaybackState?) {
@@ -40,12 +111,17 @@ class MediaNotificationListener : NotificationListenerService() {
     }
     override fun onListenerConnected() {
         super.onListenerConnected()
+        listenerReady = true
+        sessionHandler.removeCallbacks(sessionRefresh)
+        sessionHandler.post(sessionRefresh)
         getSharedPreferences(PREFS, MODE_PRIVATE).edit()
             .putBoolean("listenerConnected", true)
             .apply()
     }
 
     override fun onListenerDisconnected() {
+        listenerReady = false
+        sessionHandler.removeCallbacks(sessionRefresh)
         getSharedPreferences(PREFS, MODE_PRIVATE).edit()
             .putBoolean("listenerConnected", false)
             .apply()
