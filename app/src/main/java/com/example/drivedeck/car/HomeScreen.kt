@@ -5,7 +5,9 @@ import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
+import androidx.car.app.model.CarIcon
 import androidx.car.app.model.Template
+import androidx.core.graphics.drawable.IconCompat
 import androidx.car.app.navigation.model.NavigationTemplate
 
 class HomeScreen(carContext: CarContext) : Screen(carContext) {
@@ -31,8 +33,17 @@ class HomeScreen(carContext: CarContext) : Screen(carContext) {
             )
             .build()
 
+        val panAction = Action.Builder(Action.PAN)
+            .setIcon(
+                CarIcon.Builder(
+                    IconCompat.createWithResource(carContext, R.drawable.ic_pan)
+                ).build()
+            )
+            .build()
+
         return NavigationTemplate.Builder()
             .setActionStrip(actionStrip)
+            .setMapActionStrip(ActionStrip.Builder().addAction(panAction).build())
             .build()
     }
 
