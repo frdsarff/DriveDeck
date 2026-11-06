@@ -469,17 +469,42 @@ class CarDashboardPresentation(
               }
               rows.forEach(chars=>{const row=document.createElement('div');row.className='r';(Array.isArray(chars)?chars:chars.split('')).forEach(k=>add(k,row));board.appendChild(row);});
               document.body.appendChild(board);
-              // Android Auto's scroll callback has deltas but no pointer coordinates.
-              // Scroll the nearest genuinely scrollable element beneath the last tap.
+              // Android Auto sends scroll deltas without the current finger position.
+              // Prefer the exact hit-tested pane; on YouTube watch pages explicitly
+              // resolve the right-hand recommendations column instead of scrolling
+              // only the video/player column.
               window.__driveDeckScrollBy=function(dx,dy,x,y){
-                let el=document.elementFromPoint(x,y);
-                if(el&&el.closest&&el.closest('#ddk-keyboard')) el=document.elementFromPoint(x,Math.max(0,y-80));
-                let node=el,scroller=null;
-                while(node&&node!==document.body&&node!==document.documentElement){
-                  const st=getComputedStyle(node),oy=st.overflowY,ox=st.overflowX;
-                  if(((oy==='auto'||oy==='scroll')&&node.scrollHeight>node.clientHeight+2)||
-                     ((ox==='auto'||ox==='scroll')&&node.scrollWidth>node.clientWidth+2)){scroller=node;break;}
-                  node=node.parentElement;
+                const scrollable=n=>{
+                  if(!n||n===document.body||n===document.documentElement)return false;
+                  const st=getComputedStyle(n);
+                  return (((st.overflowY==='auto'||st.overflowY==='scroll')&&n.scrollHeight>n.clientHeight+2)||
+                          ((st.overflowX==='auto'||st.overflowX==='scroll')&&n.scrollWidth>n.clientWidth+2));
+                };
+                let hit=document.elementFromPoint(x,y);
+                if(hit&&hit.closest&&hit.closest('#ddk-keyboard')) hit=document.elementFromPoint(x,Math.max(0,y-80));
+                let scroller=null;
+                for(let node=hit;node&&node!==document.body&&node!==document.documentElement;node=node.parentElement){
+                  if(scrollable(node)){scroller=node;break;}
+                }
+                const rightSide=x>window.innerWidth*0.52;
+                if(rightSide){
+                  const selectors=['#secondary','ytd-watch-next-secondary-results-renderer',
+                    '#related','ytd-watch-next-results','ytm-item-section-renderer'];
+                  for(const selector of selectors){
+                    const candidates=Array.from(document.querySelectorAll(selector));
+                    const pane=candidates.find(n=>{
+                      const r=n.getBoundingClientRect();
+                      return r.width>0&&r.height>0&&x>=r.left-2&&x<=r.right+2&&y>=r.top-2&&y<=r.bottom+2;
+                    })||candidates.find(n=>{const r=n.getBoundingClientRect();return r.width>0&&r.height>0&&r.left>window.innerWidth*0.45;});
+                    if(pane){
+                      let node=pane;
+                      while(node&&node!==document.body&&node!==document.documentElement){
+                        if(scrollable(node)){scroller=node;break;}
+                        node=node.parentElement;
+                      }
+                      if(scroller)break;
+                    }
+                  }
                 }
                 if(!scroller)scroller=document.scrollingElement||document.documentElement;
                 if(scroller)scroller.scrollBy({left:dx,top:dy,behavior:'auto'});
