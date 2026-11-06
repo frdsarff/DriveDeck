@@ -2,6 +2,8 @@ package com.example.drivedeck.car
 
 import android.app.Presentation
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.os.Bundle
