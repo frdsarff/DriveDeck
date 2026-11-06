@@ -170,6 +170,24 @@ class CarDashboardPresentation(
         val root = presentationRoot ?: return
         root.post {
             if (isCleanedUp || presentationRoot !== root || root.width <= 0 || root.height <= 0) return@post
+
+            // Android Auto scroll callbacks do not include pointer coordinates.
+            // On the YouTube page, use a DOM wheel/scroll event so nested
+            // recommendation and comment panes can scroll independently.
+            val youtube = youtubeWebView
+            if (youtube != null && youtube.visibility == View.VISIBLE) {
+                val dx = distanceX.coerceIn(-1200f, 1200f)
+                val dy = distanceY.coerceIn(-1200f, 1200f)
+                val x = (youtube.width * 0.78f).toInt()
+                val y = (youtube.height * 0.58f).toInt()
+                youtube.evaluateJavascript(
+                    "window.__driveDeckScrollBy && window.__driveDeckScrollBy($dx,$dy,$x,$y)",
+                    null
+                )
+                scrollGestureActive = false
+                return@post
+            }
+
             val now = SystemClock.uptimeMillis()
             if (!scrollGestureActive) {
                 // Android Auto reports scroll deltas without touch coordinates.
@@ -208,6 +226,20 @@ class CarDashboardPresentation(
                 root.dispatchTouchEvent(down)
                 down.recycle()
             }
+            val youtube = youtubeWebView
+            if (youtube != null && youtube.visibility == View.VISIBLE) {
+                val dx = (velocityX * 0.18f).coerceIn(-1800f, 1800f)
+                val dy = (velocityY * 0.18f).coerceIn(-1800f, 1800f)
+                val x = (youtube.width * 0.78f).toInt()
+                val y = (youtube.height * 0.58f).toInt()
+                youtube.evaluateJavascript(
+                    "window.__driveDeckScrollBy && window.__driveDeckScrollBy($dx,$dy,$x,$y)",
+                    null
+                )
+                scrollGestureActive = false
+                return@post
+            }
+
             val targetX = (scrollPointerX - velocityX * 0.10f).coerceIn(0f, (root.width - 1).toFloat())
             val targetY = (scrollPointerY - velocityY * 0.10f).coerceIn(0f, (root.height - 1).toFloat())
             val move = MotionEvent.obtain(now, now + 80L, MotionEvent.ACTION_MOVE, targetX, targetY, 0)
@@ -378,7 +410,34 @@ class CarDashboardPresentation(
             })();
         """.trimIndent()
         page.evaluateJavascript(script, null)
-        Log.i(TAG, "Injected DriveDeck in-page YouTube keyboard")
+        val scrollScript = """
+            (function(){
+              if(window.__driveDeckScrollInstalled) return;
+              window.__driveDeckScrollInstalled = true;
+              window.__driveDeckScrollBy = function(dx,dy,x,y){
+                try {
+                  const px = Math.max(0, Math.min(window.innerWidth - 1, Number(x) || window.innerWidth * 0.78));
+                  const py = Math.max(0, Math.min(window.innerHeight - 1, Number(y) || window.innerHeight * 0.58));
+                  let node = document.elementFromPoint(px,py);
+                  let target = node;
+                  while(target && target !== document.body && target !== document.documentElement){
+                    const s = getComputedStyle(target);
+                    const canY = target.scrollHeight > target.clientHeight + 2 && /(auto|scroll)/.test(s.overflowY);
+                    const canX = target.scrollWidth > target.clientWidth + 2 && /(auto|scroll)/.test(s.overflowX);
+                    if((dy && canY) || (dx && canX)) break;
+                    target = target.parentElement;
+                  }
+                  if(!target || target === document.body || target === document.documentElement) target = document.scrollingElement || document.documentElement;
+                  const wheel = new WheelEvent('wheel',{deltaX:Number(dx)||0,deltaY:Number(dy)||0,bubbles:true,cancelable:true,clientX:px,clientY:py});
+                  (node || target).dispatchEvent(wheel);
+                  if(target && target.scrollBy) target.scrollBy({left:Number(dx)||0,top:Number(dy)||0,behavior:'auto'});
+                  else window.scrollBy(Number(dx)||0,Number(dy)||0);
+                } catch(e) { console.warn('DriveDeck scroll bridge',e); }
+              };
+            })();
+        """.trimIndent()
+        page.evaluateJavascript(scrollScript, null)
+        Log.i(TAG, "Injected DriveDeck in-page YouTube keyboard and scroll bridge")
     }
 
     private fun showDashboardPage() {
