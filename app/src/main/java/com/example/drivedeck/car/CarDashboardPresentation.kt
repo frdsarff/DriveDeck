@@ -234,6 +234,16 @@ class CarDashboardPresentation(
 
     inner class PoCDashboardBridge {
         @JavascriptInterface fun getState(): String = buildPoCStateJson(currentDiagnostics)
+        @JavascriptInterface fun openYoutubeWeb(): Boolean {
+            return try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://m.youtube.com")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                true
+            } catch (e: Exception) {
+                Log.w(TAG, "Unable to open YouTube Web", e)
+                false
+            }
+        }
         @JavascriptInterface fun action(name: String): Boolean {
             val handled = MediaNotificationListener.controlPlayback(name)
             Log.i(TAG, "DriveDeckCar.action('$name'): handled=$handled")
