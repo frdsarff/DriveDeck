@@ -311,7 +311,7 @@ class CarDashboardPresentation(
               const board = document.createElement('div');
               board.id = 'ddk-keyboard';
               const rows = [
-                ['qwertyuiop'],['asdfghjkl'],['⇧zxcvbnm⌫'],['123','@','SPACE','.','SEARCH','DONE']
+                'qwertyuiop','asdfghjkl','⇧zxcvbnm⌫',['123','@','SPACE','.','SEARCH','DONE']
               ];
               function emit() {
                 if (!target || !target.isConnected) return;
@@ -341,10 +341,10 @@ class CarDashboardPresentation(
                     else if(start!==end){target.setRangeText('',start,end,'end');}
                   } else if(label==='SPACE'){target.setRangeText(' ',start,end,'end');}
                   else if(label==='⇧'){board.dataset.shift=board.dataset.shift==='1'?'0':'1';return;}
-                  else if(label==='123'){board.dataset.numeric=board.dataset.numeric==='1'?'0':'1';return;}
+                  else if(label==='123'){board.dataset.numeric=board.dataset.numeric==='1'?'0':'1';b.textContent=board.dataset.numeric==='1'?'ABC':'123';return;}
                   else {
                     let ch=label;
-                    if(board.dataset.shift==='1') ch=ch.toUpperCase();
+                    if(board.dataset.numeric==='1'){const map={q:'1',w:'2',e:'3',r:'4',t:'5',y:'6',u:'7',i:'8',o:'9',p:'0',a:'-',s:'/',d:':',f:';',g:'(',h:')',j:'
                     target.setRangeText(ch,start,end,'end');
                     board.dataset.shift='0';
                   }
@@ -354,7 +354,175 @@ class CarDashboardPresentation(
               }
               rows.forEach(function(chars){
                 const row=document.createElement('div');row.className='ddk-row';
-                const labels=chars[0].length>1?chars:chars[0].split('');
+                const labels=Array.isArray(chars)?chars:chars.split('');
+                labels.forEach(label=>addKey(label,row));board.appendChild(row);
+              });
+              document.body.appendChild(board);
+              document.addEventListener('focusin',function(ev){
+                const el=ev.target;
+                if(el && (el.tagName==='INPUT'||el.tagName==='TEXTAREA') && !['checkbox','radio','button','submit'].includes((el.type||'').toLowerCase())){
+                  target=el; board.style.display='flex';
+                }
+              },true);
+              document.addEventListener('focusout',function(){setTimeout(function(){if(!target || !target.isConnected)board.style.display='none';},250);},true);
+              window.addEventListener('resize',function(){if(target && target.isConnected)board.style.display='flex';});
+            })();
+        """.trimIndent()
+        page.evaluateJavascript(script, null)
+        Log.i(TAG, "Injected DriveDeck in-page YouTube keyboard")
+    }
+
+    private fun showDashboardPage() {
+        if (isCleanedUp) return
+        (youtubeWebView?.tag as? View)?.visibility = View.GONE
+        dashboardView?.visibility = View.VISIBLE
+        Log.i(TAG, "Returned to DriveDeck dashboard")
+    }
+
+    fun reloadWebView() {
+        if (isCleanedUp) return
+        val wv = webView ?: return
+        wv.post {
+            if (isCleanedUp || webView == null) return@post
+            pageLoaded = false
+            Log.i(TAG, "Presentation.reloadWebView: Reloading existing WebView instance")
+            wv.reload()
+        }
+    }
+
+    private fun pushDiagnosticsToWebView(diag: SurfaceDiagnostics) {
+        if (isCleanedUp) return
+        val wv = webView ?: return
+        val state = buildPoCStateJson(diag)
+        wv.post { if (!isCleanedUp && pageLoaded && webView != null) wv.evaluateJavascript("render($state);", null) }
+    }
+
+    private fun buildPoCStateJson(diag: SurfaceDiagnostics): String {
+        val lines = JSONArray()
+            .put("Surface: ${diag.width}×${diag.height} px @ ${diag.dpi} dpi")
+            .put("Visible: ${diag.visibleArea} | Stable: ${diag.stableArea}")
+            .put("Display ID: ${diag.displayId} • Updates: ${diag.updateCount}")
+        return JSONObject()
+            .put("connected", true)
+            .put("connectionText", "● DRIVEDECK CONNECTED")
+            .put("title", "Custom Surface PoC Ready")
+            .put("artist", "Resolution: ${diag.width}×${diag.height} px • DPI: ${diag.dpi}")
+            .put("source", "VIRTUALDISPLAY + PRESENTATION + WEBVIEW")
+            .put("elapsed", "VISIBLE ${diag.visibleArea}")
+            .put("duration", "DPI ${diag.dpi}")
+            .put("status", "PHASE 1 POC • CAR API ${diag.carApiLevel}")
+            .put("playing", false)
+            .put("artwork", "")
+            .put("lines", lines)
+            .put("dashboardLayout", readDashboardLayout())
+            .put("showMetadata", dashboardPrefs.getString("metadata", "true") != "false")
+            .put("showLyrics", dashboardPrefs.getString("lyrics", "true") != "false")
+            .put("lyricsFontSize", dashboardPrefs.getString("lyricsFontSize", "25")?.toIntOrNull()?.coerceIn(14, 36) ?: 25)
+            .put("musicTitle", lyricsPrefs.getString("title", "").orEmpty())
+            .put("musicArtist", lyricsPrefs.getString("artist", "").orEmpty())
+            .put("musicPackage", lyricsPrefs.getString("package", "").orEmpty())
+            .put("musicPositionMs", lyricsPrefs.getLong("positionMs", 0L))
+            .put("musicPlaybackSpeed", lyricsPrefs.getFloat("playbackSpeed", 0f).toDouble())
+            .put("musicIsPlaying", lyricsPrefs.getFloat("playbackSpeed", 0f) > 0f)
+            .put("musicSyncedLyrics", if (dashboardPrefs.getString("lyrics", "true") != "false") lyricsPrefs.getString("syncedLyrics", "").orEmpty() else "")
+            .put("musicLyrics", if (dashboardPrefs.getString("lyrics", "true") != "false") lyricsPrefs.getString("lyrics", "").orEmpty() else "")
+            .put("weatherReady", dashboardPrefs.getBoolean("weatherReady", false))
+            .put("weatherTemperature", dashboardPrefs.getString("weatherTemperature", "").orEmpty())
+            .put("weatherDescription", dashboardPrefs.getString("weatherDescription", "").orEmpty())
+            .put("weatherLocation", dashboardPrefs.getString("weatherLocation", "").orEmpty())
+            .put("weatherFeelsLike", dashboardPrefs.getString("weatherFeelsLike", "").orEmpty())
+            .put("weatherHumidity", dashboardPrefs.getInt("weatherHumidity", 0))
+            .put("weatherWind", dashboardPrefs.getFloat("weatherWind", 0f).toDouble())
+            .put("weatherUpdatedAt", dashboardPrefs.getLong("weatherUpdatedAt", 0L))
+            .toString()
+    }
+
+    private fun readDashboardLayout(): JSONObject {
+        // Default only applies on a clean install. Saved phone layouts remain untouched.
+        val fallback = """{"widgets":[{"id":"clock-1","type":"clock","x":0,"y":0,"w":4,"h":2},{"id":"weather-1","type":"weather","x":4,"y":0,"w":4,"h":2},{"id":"music-1","type":"music","x":8,"y":0,"w":4,"h":2},{"id":"shortcuts-1","type":"shortcuts","x":0,"y":2,"w":6,"h":2}]}"""
+        return try {
+            val raw = dashboardPrefs.getString("dashboardLayout", fallback) ?: fallback
+            JSONObject(raw)
+        } catch (e: Exception) {
+            Log.w(TAG, "Invalid saved dashboard layout; using defaults", e)
+            JSONObject(fallback)
+        }
+    }
+
+    fun cleanup() {
+        if (isCleanedUp) return
+        isCleanedUp = true
+        pageLoaded = false
+        try {
+            dashboardPrefs.unregisterOnSharedPreferenceChangeListener(dashboardPrefsListener)
+            lyricsPrefs.unregisterOnSharedPreferenceChangeListener(lyricsPrefsListener)
+            dashboardPrefs.unregisterOnSharedPreferenceChangeListener(weatherPrefsListener)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to unregister dashboard preference listener", e)
+        }
+        val wv = webView
+        webView = null
+        val yt = youtubeWebView
+        youtubeWebView = null
+        presentationRoot = null
+        dashboardView = null
+        try { if (isShowing) dismiss() } catch (e: Exception) { Log.w(TAG, "Dismiss failed", e) }
+        if (yt != null) try {
+            yt.stopLoading()
+            yt.webChromeClient = null
+            yt.webViewClient = WebViewClient()
+            (yt.parent as? ViewGroup)?.removeView(yt)
+            yt.removeAllViews()
+            yt.destroy()
+        } catch (e: Exception) { Log.w(TAG, "YouTube WebView cleanup failed", e) }
+        if (wv != null) try {
+            wv.stopLoading()
+            wv.removeJavascriptInterface(BRIDGE_NAME)
+            wv.webChromeClient = null
+            wv.webViewClient = WebViewClient()
+            (wv.parent as? ViewGroup)?.removeView(wv)
+            wv.removeAllViews()
+            wv.destroy()
+        } catch (e: Exception) { Log.w(TAG, "WebView cleanup failed", e) }
+    }
+
+    inner class PoCDashboardBridge {
+        @JavascriptInterface fun getState(): String = buildPoCStateJson(currentDiagnostics)
+        @JavascriptInterface fun openYoutubeWeb(): Boolean {
+            if (isCleanedUp) return false
+            webView?.post { openYoutubePage() }
+            return true
+        }
+        @JavascriptInterface fun action(name: String): Boolean {
+            val handled = MediaNotificationListener.controlPlayback(name)
+            Log.i(TAG, "DriveDeckCar.action('$name'): handled=$handled")
+            return handled
+        }
+    }
+
+    companion object {
+        private const val TAG = "DriveDeckPoC"
+        private const val BRIDGE_NAME = "DriveDeckCar"
+        private const val DASHBOARD_ASSET_URL = "file:///android_asset/car_dashboard.html"
+    }
+}
+
+data class SurfaceDiagnostics(
+    val width: Int, val height: Int, val dpi: Int, val displayId: Int, val carApiLevel: Int,
+    val visibleArea: String = "N/A", val stableArea: String = "N/A", val updateCount: Int = 1
+)
+,k:'&',l:'@',z:'!',x:'?',c:'\'',v:'"',b:'#',n:'%',m:'+'};ch=map[ch]||ch;}
+                    else if(board.dataset.shift==='1') ch=ch.toUpperCase();
+                    target.setRangeText(ch,start,end,'end');
+                    board.dataset.shift='0';
+                  }
+                  emit();
+                });
+                row.appendChild(b);
+              }
+              rows.forEach(function(chars){
+                const row=document.createElement('div');row.className='ddk-row';
+                const labels=Array.isArray(chars)?chars:chars.split('');
                 labels.forEach(label=>addKey(label,row));board.appendChild(row);
               });
               document.body.appendChild(board);
