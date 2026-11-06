@@ -7,7 +7,9 @@ import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.Display
+import android.view.MotionEvent
 import android.view.ViewGroup
+import android.os.SystemClock
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -105,6 +107,34 @@ class CarDashboardPresentation(
         if (isCleanedUp) return
         currentDiagnostics = diagnostics
         if (pageLoaded) pushDiagnosticsToWebView(diagnostics)
+    }
+
+    /**
+     * Replays a host-provided tap against the dashboard WebView. Coordinates
+     * are in the host surface's pixel space, matching the Presentation display.
+     */
+    fun dispatchDashboardClick(x: Float, y: Float) {
+        if (isCleanedUp) return
+        val wv = webView ?: return
+        wv.post {
+            if (isCleanedUp || webView !== wv || wv.width <= 0 || wv.height <= 0) {
+                Log.w(TAG, "dispatchDashboardClick: WebView is not ready")
+                return@post
+            }
+            val px = x.coerceIn(0f, (wv.width - 1).toFloat())
+            val py = y.coerceIn(0f, (wv.height - 1).toFloat())
+            val downTime = SystemClock.uptimeMillis()
+            val down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, px, py, 0)
+            val up = MotionEvent.obtain(downTime, downTime + 60L, MotionEvent.ACTION_UP, px, py, 0)
+            try {
+                wv.dispatchTouchEvent(down)
+                wv.dispatchTouchEvent(up)
+                Log.i(TAG, "Dashboard tap dispatched to WebView at ($px, $py)")
+            } finally {
+                down.recycle()
+                up.recycle()
+            }
+        }
     }
 
     fun reloadWebView() {
