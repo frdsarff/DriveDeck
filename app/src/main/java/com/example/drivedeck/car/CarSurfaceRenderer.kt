@@ -178,6 +178,20 @@ class CarSurfaceRenderer(
         }
     }
 
+    override fun onScroll(distanceX: Float, distanceY: Float) {
+        Log.d(TAG, "SurfaceCallback.onScroll: dx=$distanceX dy=$distanceY")
+        runOnMainThread {
+            presentation?.dispatchDashboardScroll(distanceX, distanceY)
+        }
+    }
+
+    override fun onFling(velocityX: Float, velocityY: Float) {
+        Log.d(TAG, "SurfaceCallback.onFling: vx=$velocityX vy=$velocityY")
+        runOnMainThread {
+            presentation?.dispatchDashboardFling(velocityX, velocityY)
+        }
+    }
+
     override fun onVisibleAreaChanged(visibleArea: Rect) {
         runOnMainThread {
             visibleRectStr = visibleArea.flattenToString()
