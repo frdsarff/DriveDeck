@@ -233,6 +233,10 @@ class CarDashboardPresentation(
                 isFocusableInTouchMode = true
                 webChromeClient = WebChromeClient()
                 webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        if (view === youtubeWebView) installYoutubeKeyboard(view)
+                    }
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                         val scheme = request?.url?.scheme ?: return true
                         return scheme != "https" && scheme != "http"
@@ -287,6 +291,85 @@ class CarDashboardPresentation(
         page?.isFocusableInTouchMode = true
         page?.requestFocus(View.FOCUS_DOWN)
         Log.i(TAG, "YouTube Web page opened inside DriveDeck")
+    }
+
+    /**
+     * Android blocks the system IME on this app-owned VirtualDisplay.
+     * Provide an in-page keyboard for YouTube search instead. It writes directly
+     * to the currently focused search input and dispatches normal DOM events.
+     */
+    private fun installYoutubeKeyboard(page: WebView) {
+        if (isCleanedUp) return
+        val script = """
+            (function() {
+              if (window.__driveDeckKeyboardInstalled) return;
+              window.__driveDeckKeyboardInstalled = true;
+              let target = null;
+              const style = document.createElement('style');
+              style.textContent = '#ddk-keyboard{position:fixed;z-index:2147483647;left:0;right:0;bottom:0;padding:10px 2vw 14px;background:rgba(8,15,27,.98);border-top:2px solid #55dff4;box-shadow:0 -8px 28px #0009;display:none;flex-direction:column;gap:7px;font:600 18px system-ui,Roboto,sans-serif;touch-action:manipulation}#ddk-keyboard .ddk-row{display:flex;justify-content:center;gap:5px}#ddk-keyboard button{flex:1;min-width:0;height:clamp(38px,7vh,58px);border:1px solid #42617d;border-radius:9px;background:#1b3048;color:#fff;font-size:clamp(14px,2.4vh,22px);font-weight:700}#ddk-keyboard button.ddk-wide{flex:1.6;background:#15566a}#ddk-keyboard button.ddk-space{flex:5}#ddk-keyboard button.ddk-enter{background:#087f83;border-color:#55dff4}';
+              document.head.appendChild(style);
+              const board = document.createElement('div');
+              board.id = 'ddk-keyboard';
+              const rows = [
+                ['qwertyuiop'],['asdfghjkl'],['⇧zxcvbnm⌫'],['123','@','SPACE','.','SEARCH','DONE']
+              ];
+              function emit() {
+                if (!target || !target.isConnected) return;
+                target.dispatchEvent(new Event('input',{bubbles:true}));
+                target.dispatchEvent(new Event('change',{bubbles:true}));
+              }
+              function addKey(label, row) {
+                const b=document.createElement('button'); b.type='button'; b.textContent=label;
+                if (['⇧','⌫','123','SEARCH','DONE'].includes(label)) b.className='ddk-wide';
+                if(label==='SPACE') b.className='ddk-space';
+                if(label==='SEARCH') b.className='ddk-enter';
+                b.addEventListener('click',function(ev){
+                  ev.preventDefault(); ev.stopPropagation();
+                  if(!target || !target.isConnected) return;
+                  const start=typeof target.selectionStart==='number'?target.selectionStart:target.value.length;
+                  const end=typeof target.selectionEnd==='number'?target.selectionEnd:target.value.length;
+                  if(label==='DONE'){board.style.display='none';return;}
+                  if(label==='SEARCH'){
+                    emit();
+                    const form=target.form;
+                    if(form && form.requestSubmit) form.requestSubmit();
+                    else target.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));
+                    board.style.display='none'; target.blur(); return;
+                  }
+                  if(label==='⌫'){
+                    if(start===end && start>0){target.setRangeText('',start-1,end,'end');}
+                    else if(start!==end){target.setRangeText('',start,end,'end');}
+                  } else if(label==='SPACE'){target.setRangeText(' ',start,end,'end');}
+                  else if(label==='⇧'){board.dataset.shift=board.dataset.shift==='1'?'0':'1';return;}
+                  else if(label==='123'){board.dataset.numeric=board.dataset.numeric==='1'?'0':'1';return;}
+                  else {
+                    let ch=label;
+                    if(board.dataset.shift==='1') ch=ch.toUpperCase();
+                    target.setRangeText(ch,start,end,'end');
+                    board.dataset.shift='0';
+                  }
+                  emit();
+                });
+                row.appendChild(b);
+              }
+              rows.forEach(function(chars){
+                const row=document.createElement('div');row.className='ddk-row';
+                const labels=chars[0].length>1?chars:chars[0].split('');
+                labels.forEach(label=>addKey(label,row));board.appendChild(row);
+              });
+              document.body.appendChild(board);
+              document.addEventListener('focusin',function(ev){
+                const el=ev.target;
+                if(el && (el.tagName==='INPUT'||el.tagName==='TEXTAREA') && !['checkbox','radio','button','submit'].includes((el.type||'').toLowerCase())){
+                  target=el; board.style.display='flex';
+                }
+              },true);
+              document.addEventListener('focusout',function(){setTimeout(function(){if(!target || !target.isConnected)board.style.display='none';},250);},true);
+              window.addEventListener('resize',function(){if(target && target.isConnected)board.style.display='flex';});
+            })();
+        """.trimIndent()
+        page.evaluateJavascript(script, null)
+        Log.i(TAG, "Injected DriveDeck in-page YouTube keyboard")
     }
 
     private fun showDashboardPage() {
