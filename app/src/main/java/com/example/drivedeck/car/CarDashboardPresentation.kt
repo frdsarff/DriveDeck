@@ -11,6 +11,12 @@ import android.util.Log
 import android.view.Display
 import android.view.MotionEvent
 import android.view.ViewGroup
+import android.view.View
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.SystemClock
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
@@ -51,6 +57,9 @@ class CarDashboardPresentation(
         }
     }
     private var webView: WebView? = null
+    private var youtubeWebView: WebView? = null
+    private var presentationRoot: FrameLayout? = null
+    private var dashboardView: WebView? = null
     private var pageLoaded = false
     private var isCleanedUp = false
 
@@ -96,7 +105,13 @@ class CarDashboardPresentation(
                 loadUrl(DASHBOARD_ASSET_URL)
             }
             webView = wv
-            setContentView(wv)
+            dashboardView = wv
+            val root = FrameLayout(context).apply {
+                setBackgroundColor(Color.rgb(8, 12, 19))
+                addView(wv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            }
+            presentationRoot = root
+            setContentView(root)
         } catch (e: Exception) {
             Log.e(TAG, "Presentation.onCreate: Failed to initialize WebView", e)
         }
@@ -137,6 +152,86 @@ class CarDashboardPresentation(
                 up.recycle()
             }
         }
+    }
+
+
+    private fun openYoutubePage() {
+        if (isCleanedUp) return
+        val root = presentationRoot ?: return
+        if (youtubeWebView == null) {
+            val page = WebView(context).apply {
+                setBackgroundColor(Color.BLACK)
+                settings.apply {
+                    javaScriptEnabled = true
+                    domStorageEnabled = true
+                    databaseEnabled = true
+                    mediaPlaybackRequiresUserGesture = false
+                    javaScriptCanOpenWindowsAutomatically = false
+                    setSupportMultipleWindows(false)
+                    loadWithOverviewMode = true
+                    useWideViewPort = true
+                }
+                webChromeClient = WebChromeClient()
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                        val scheme = request?.url?.scheme ?: return true
+                        return scheme != "https" && scheme != "http"
+                    }
+                }
+            }
+            youtubeWebView = page
+            val pageFrame = FrameLayout(context).apply {
+                setBackgroundColor(Color.BLACK)
+                addView(page, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            }
+            val toolbar = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(12, 8, 12, 8)
+                setBackgroundColor(Color.rgb(10, 25, 40))
+            }
+            fun addNavButton(label: String, action: () -> Unit) {
+                val button = TextView(context).apply {
+                    text = label
+                    textSize = 16f
+                    setTextColor(Color.WHITE)
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = android.view.Gravity.CENTER
+                    setPadding(18, 10, 18, 10)
+                    background = GradientDrawable().apply {
+                        setColor(Color.rgb(28, 65, 88))
+                        cornerRadius = 18f
+                        setStroke(1, Color.rgb(85, 223, 244))
+                    }
+                    setOnClickListener { action() }
+                }
+                toolbar.addView(button, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = 10 })
+            }
+            addNavButton("⌂  Home") { showDashboardPage() }
+            addNavButton("‹  Back") {
+                val current = youtubeWebView
+                if (current != null && current.canGoBack()) current.goBack() else showDashboardPage()
+            }
+            val pageLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(toolbar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+                addView(pageFrame, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            }
+            root.addView(pageLayout, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            page.tag = pageLayout
+        }
+        dashboardView?.visibility = View.GONE
+        (youtubeWebView?.tag as? View)?.visibility = View.VISIBLE
+        val page = youtubeWebView
+        if (page != null && page.url.isNullOrBlank()) page.loadUrl("https://m.youtube.com/")
+        Log.i(TAG, "YouTube Web page opened inside DriveDeck")
+    }
+
+    private fun showDashboardPage() {
+        if (isCleanedUp) return
+        (youtubeWebView?.tag as? View)?.visibility = View.GONE
+        dashboardView?.visibility = View.VISIBLE
+        Log.i(TAG, "Returned to DriveDeck dashboard")
     }
 
     fun reloadWebView() {
@@ -222,7 +317,19 @@ class CarDashboardPresentation(
         }
         val wv = webView
         webView = null
+        val yt = youtubeWebView
+        youtubeWebView = null
+        presentationRoot = null
+        dashboardView = null
         try { if (isShowing) dismiss() } catch (e: Exception) { Log.w(TAG, "Dismiss failed", e) }
+        if (yt != null) try {
+            yt.stopLoading()
+            yt.webChromeClient = null
+            yt.webViewClient = WebViewClient()
+            (yt.parent as? ViewGroup)?.removeView(yt)
+            yt.removeAllViews()
+            yt.destroy()
+        } catch (e: Exception) { Log.w(TAG, "YouTube WebView cleanup failed", e) }
         if (wv != null) try {
             wv.stopLoading()
             wv.removeJavascriptInterface(BRIDGE_NAME)
@@ -237,14 +344,9 @@ class CarDashboardPresentation(
     inner class PoCDashboardBridge {
         @JavascriptInterface fun getState(): String = buildPoCStateJson(currentDiagnostics)
         @JavascriptInterface fun openYoutubeWeb(): Boolean {
-            return try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://m.youtube.com")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                true
-            } catch (e: Exception) {
-                Log.w(TAG, "Unable to open YouTube Web", e)
-                false
-            }
+            if (isCleanedUp) return false
+            webView?.post { openYoutubePage() }
+            return true
         }
         @JavascriptInterface fun action(name: String): Boolean {
             val handled = MediaNotificationListener.controlPlayback(name)
