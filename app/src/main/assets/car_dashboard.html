@@ -135,10 +135,18 @@ function render(s){
  updateClock();
  updateLyrics();
 }
+// Paint a usable dashboard immediately; native state can replace it once the bridge responds.
+render({dashboardLayout:DEFAULT});
 try{
- if(window.DriveDeckCar&&DriveDeckCar.getState)render(JSON.parse(DriveDeckCar.getState()));
- else render({dashboardLayout:DEFAULT});
-}catch(e){console.error('DriveDeck dashboard initialization failed',e);render({dashboardLayout:DEFAULT})}
+ if(window.DriveDeckCar&&typeof DriveDeckCar.getState==='function'){
+  const nativeState=JSON.parse(DriveDeckCar.getState());
+  render(nativeState);
+ }else{
+  console.warn('DriveDeckCar bridge unavailable; keeping default dashboard visible');
+ }
+}catch(e){
+ console.error('DriveDeck dashboard state load failed; keeping default dashboard visible',e);
+}
 setInterval(updateClock,1000);
 setInterval(updateLyrics,250);
 </script>
