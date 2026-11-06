@@ -166,6 +166,18 @@ class CarSurfaceRenderer(
         }
     }
 
+    /**
+     * For hosts that support Car App API 5 tap callbacks, forward the host
+     * surface coordinates to the WebView shown on the virtual display.
+     */
+    override fun onClick(x: Float, y: Float) {
+        Log.i(TAG, "SurfaceCallback.onClick: x=$x y=$y")
+        runOnMainThread {
+            presentation?.dispatchDashboardClick(x, y)
+                ?: Log.w(TAG, "onClick ignored: Presentation is unavailable")
+        }
+    }
+
     override fun onVisibleAreaChanged(visibleArea: Rect) {
         runOnMainThread {
             visibleRectStr = visibleArea.flattenToString()
