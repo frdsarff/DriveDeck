@@ -59,6 +59,9 @@ class CarDashboardPresentation(
     }
     private var webView: WebView? = null
     private var youtubeWebView: WebView? = null
+    private var youtubePageLayout: View? = null
+    private var youtubeFullscreenView: View? = null
+    private var youtubeFullscreenCallback: WebChromeClient.CustomViewCallback? = null
     private var presentationRoot: FrameLayout? = null
     private var dashboardView: WebView? = null
     private var pageLoaded = false
@@ -272,7 +275,41 @@ class CarDashboardPresentation(
                 }
                 isFocusable = true
                 isFocusableInTouchMode = true
-                webChromeClient = WebChromeClient()
+                webChromeClient = object : WebChromeClient() {
+                    override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                        if (view == null) return
+                        val rootView = presentationRoot ?: run {
+                            callback?.onCustomViewHidden()
+                            return
+                        }
+                        if (youtubeFullscreenView != null) {
+                            callback?.onCustomViewHidden()
+                            return
+                        }
+                        youtubeFullscreenView = view
+                        youtubeFullscreenCallback = callback
+                        youtubePageLayout?.visibility = View.GONE
+                        dashboardView?.visibility = View.GONE
+                        rootView.addView(view, FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        ))
+                        view.requestFocus()
+                        Log.i(TAG, "YouTube HTML5 fullscreen entered")
+                    }
+
+                    override fun onHideCustomView() {
+                        val rootView = presentationRoot
+                        youtubeFullscreenView?.let { view ->
+                            (view.parent as? ViewGroup)?.removeView(view)
+                        }
+                        youtubeFullscreenView = null
+                        youtubePageLayout?.visibility = View.VISIBLE
+                        youtubeFullscreenCallback?.onCustomViewHidden()
+                        youtubeFullscreenCallback = null
+                        Log.i(TAG, "YouTube HTML5 fullscreen exited")
+                    }
+                }
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
@@ -323,6 +360,7 @@ class CarDashboardPresentation(
                 addView(pageFrame, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
             }
             root.addView(pageLayout, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            youtubePageLayout = pageLayout
             page.tag = pageLayout
         }
         dashboardView?.visibility = View.GONE
@@ -342,106 +380,91 @@ class CarDashboardPresentation(
     private fun installYoutubeKeyboard(page: WebView) {
         if (isCleanedUp) return
         val script = """
-            (function() {
-              if (window.__driveDeckKeyboardInstalled) return;
-              window.__driveDeckKeyboardInstalled = true;
-              let target = null;
-              const style = document.createElement('style');
-              style.textContent = '#ddk-keyboard{position:fixed;z-index:2147483647;left:0;right:0;bottom:0;padding:10px 2vw 14px;background:rgba(8,15,27,.98);border-top:2px solid #55dff4;box-shadow:0 -8px 28px #0009;display:none;flex-direction:column;gap:7px;font:600 18px system-ui,Roboto,sans-serif;touch-action:manipulation}#ddk-keyboard .ddk-row{display:flex;justify-content:center;gap:5px}#ddk-keyboard button{flex:1;min-width:0;height:clamp(38px,7vh,58px);border:1px solid #42617d;border-radius:9px;background:#1b3048;color:#fff;font-size:clamp(14px,2.4vh,22px);font-weight:700}#ddk-keyboard button.ddk-wide{flex:1.6;background:#15566a}#ddk-keyboard button.ddk-space{flex:5}#ddk-keyboard button.ddk-enter{background:#087f83;border-color:#55dff4}';
-              document.head.appendChild(style);
-              const board = document.createElement('div');
-              board.id = 'ddk-keyboard';
-              const rows = [
-                'qwertyuiop','asdfghjkl','⇧zxcvbnm⌫',['123','@','SPACE','.','SEARCH','DONE']
-              ];
-              function emit() {
-                if (!target || !target.isConnected) return;
-                target.dispatchEvent(new Event('input',{bubbles:true}));
-                target.dispatchEvent(new Event('change',{bubbles:true}));
+            (function(){
+              if(window.__ddkKeyboardV2) return;
+              window.__ddkKeyboardV2=true;
+              let target=null;
+              const css=document.createElement('style');
+              css.textContent='#ddk-keyboard{position:fixed;z-index:2147483647;left:0;right:0;bottom:0;padding:8px 2vw 12px;background:rgba(7,15,28,.98);border-top:2px solid #55dff4;display:none;flex-direction:column;gap:5px;font:700 18px system-ui;touch-action:manipulation}#ddk-keyboard .r{display:flex;gap:5px}#ddk-keyboard button{flex:1;min-width:0;height:clamp(36px,6vh,54px);border:1px solid #49647e;border-radius:8px;background:#1b3048;color:white;font-size:clamp(13px,2.2vh,20px)}#ddk-keyboard .wide{flex:1.5;background:#15566a}#ddk-keyboard .space{flex:4}#ddk-keyboard .enter{background:#087f83}';
+              document.head.appendChild(css);
+              const board=document.createElement('div');board.id='ddk-keyboard';
+              const rows=['qwertyuiop','asdfghjkl','⇧zxcvbnm⌫',['123','@','SPACE','.','SEARCH','DONE']];
+              function editable(el){return !!el&&((el.tagName==='INPUT'&&!['button','submit','checkbox','radio','hidden'].includes((el.type||'').toLowerCase()))||el.tagName==='TEXTAREA'||el.isContentEditable);}
+              function activeDeep(root){let el=root.activeElement;while(el&&el.shadowRoot&&el.shadowRoot.activeElement)el=el.shadowRoot.activeElement;return el;}
+              function capture(ev){
+                const path=ev&&ev.composedPath?ev.composedPath():[];
+                const candidate=path.find(editable)||activeDeep(document);
+                if(editable(candidate)){target=candidate;board.style.display='flex';}
               }
-              function addKey(label, row) {
-                const b=document.createElement('button'); b.type='button'; b.textContent=label;
-                if (['⇧','⌫','123','SEARCH','DONE'].includes(label)) b.className='ddk-wide';
-                if(label==='SPACE') b.className='ddk-space';
-                if(label==='SEARCH') b.className='ddk-enter';
+              function fireInput(el){
+                try{el.dispatchEvent(new InputEvent('input',{bubbles:true,composed:true,inputType:'insertText',data:el.value}));}
+                catch(_){el.dispatchEvent(new Event('input',{bubbles:true,composed:true}));}
+                el.dispatchEvent(new Event('change',{bubbles:true,composed:true}));
+              }
+              function insert(value){
+                if(!target||!target.isConnected)return;
+                if(target.isContentEditable){document.execCommand('insertText',false,value);fireInput(target);return;}
+                const s=typeof target.selectionStart==='number'?target.selectionStart:target.value.length;
+                const e=typeof target.selectionEnd==='number'?target.selectionEnd:target.value.length;
+                try{target.setRangeText(value,s,e,'end');}catch(_){target.value=(target.value||'')+value;}
+                fireInput(target);
+              }
+              function add(label,row){
+                const b=document.createElement('button');b.type='button';b.textContent=label;
+                if(['⇧','⌫','123','SEARCH','DONE'].includes(label))b.className='wide';
+                if(label==='SPACE')b.className='space';if(label==='SEARCH')b.className='wide enter';
                 b.addEventListener('click',function(ev){
-                  ev.preventDefault(); ev.stopPropagation();
-                  if(!target || !target.isConnected) return;
-                  const start=typeof target.selectionStart==='number'?target.selectionStart:target.value.length;
-                  const end=typeof target.selectionEnd==='number'?target.selectionEnd:target.value.length;
+                  ev.preventDefault();ev.stopPropagation();
                   if(label==='DONE'){board.style.display='none';return;}
+                  if(!target||!target.isConnected){capture();if(!target)return;}
                   if(label==='SEARCH'){
-                    emit();
+                    fireInput(target);
+                    target.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));
                     const form=target.form;
-                    if(form && form.requestSubmit) form.requestSubmit();
-                    else target.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));
-                    board.style.display='none'; target.blur(); return;
+                    if(form&&form.requestSubmit)form.requestSubmit();
+                    else target.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));
+                    board.style.display='none';return;
                   }
+                  if(label==='⇧'){board.dataset.shift=board.dataset.shift==='1'?'0':'1';return;}
+                  if(label==='123'){board.dataset.num=board.dataset.num==='1'?'0':'1';b.textContent=board.dataset.num==='1'?'ABC':'123';return;}
                   if(label==='⌫'){
-                    if(start===end && start>0){target.setRangeText('',start-1,end,'end');}
-                    else if(start!==end){target.setRangeText('',start,end,'end');}
-                  } else if(label==='SPACE'){target.setRangeText(' ',start,end,'end');}
-                  else if(label==='⇧'){board.dataset.shift=board.dataset.shift==='1'?'0':'1';return;}
-                  else if(label==='123'){board.dataset.numeric=board.dataset.numeric==='1'?'0':'1';b.textContent=board.dataset.numeric==='1'?'ABC':'123';return;}
-                  else {
-                    let ch=label;
-                    if(board.dataset.numeric==='1'){const map={q:'1',w:'2',e:'3',r:'4',t:'5',y:'6',u:'7',i:'8',o:'9',p:'0',a:'-',s:'/',d:':',f:';',g:'(',h:')',j:'
-                    target.setRangeText(ch,start,end,'end');
-                    board.dataset.shift='0';
+                    if(target.isContentEditable){document.execCommand('delete');fireInput(target);return;}
+                    const s=target.selectionStart||0,e=target.selectionEnd||0;
+                    if(s===e&&s>0)target.setRangeText('',s-1,e,'end');else target.setRangeText('',s,e,'end');
+                    fireInput(target);return;
                   }
-                  emit();
+                  if(label==='SPACE'){insert(' ');return;}
+                  let ch=label;
+                  if(board.dataset.num==='1'){const map={q:'1',w:'2',e:'3',r:'4',t:'5',y:'6',u:'7',i:'8',o:'9',p:'0'};ch=map[ch]||ch;}
+                  else if(board.dataset.shift==='1')ch=ch.toUpperCase();
+                  insert(ch);board.dataset.shift='0';
                 });
                 row.appendChild(b);
               }
-              rows.forEach(function(chars){
-                const row=document.createElement('div');row.className='ddk-row';
-                const labels=Array.isArray(chars)?chars:chars.split('');
-                labels.forEach(label=>addKey(label,row));board.appendChild(row);
-              });
+              rows.forEach(chars=>{const row=document.createElement('div');row.className='r';(Array.isArray(chars)?chars:chars.split('')).forEach(k=>add(k,row));board.appendChild(row);});
               document.body.appendChild(board);
-              document.addEventListener('focusin',function(ev){
-                const el=ev.target;
-                if(el && (el.tagName==='INPUT'||el.tagName==='TEXTAREA') && !['checkbox','radio','button','submit'].includes((el.type||'').toLowerCase())){
-                  target=el; board.style.display='flex';
-                }
-              },true);
-              document.addEventListener('focusout',function(){setTimeout(function(){if(!target || !target.isConnected)board.style.display='none';},250);},true);
-              window.addEventListener('resize',function(){if(target && target.isConnected)board.style.display='flex';});
+              document.addEventListener('focusin',capture,true);
+              document.addEventListener('click',function(){setTimeout(()=>capture(),80);},true);
+              document.addEventListener('touchend',function(){setTimeout(()=>capture(),100);},true);
+              document.addEventListener('keydown',function(ev){if(ev.key==='Escape')board.style.display='none';},true);
+              const observer=new MutationObserver(()=>{if(target&&!target.isConnected){target=null;board.style.display='none';}});
+              observer.observe(document.documentElement,{childList:true,subtree:true});
+              setTimeout(()=>capture(),300);
             })();
         """.trimIndent()
-        page.evaluateJavascript(script, null)
-        val scrollScript = """
-            (function(){
-              if(window.__driveDeckScrollInstalled) return;
-              window.__driveDeckScrollInstalled = true;
-              window.__driveDeckScrollBy = function(dx,dy,x,y){
-                try {
-                  const px = Math.max(0, Math.min(window.innerWidth - 1, Number(x) || window.innerWidth * 0.78));
-                  const py = Math.max(0, Math.min(window.innerHeight - 1, Number(y) || window.innerHeight * 0.58));
-                  let node = document.elementFromPoint(px,py);
-                  let target = node;
-                  while(target && target !== document.body && target !== document.documentElement){
-                    const s = getComputedStyle(target);
-                    const canY = target.scrollHeight > target.clientHeight + 2 && /(auto|scroll)/.test(s.overflowY);
-                    const canX = target.scrollWidth > target.clientWidth + 2 && /(auto|scroll)/.test(s.overflowX);
-                    if((dy && canY) || (dx && canX)) break;
-                    target = target.parentElement;
-                  }
-                  if(!target || target === document.body || target === document.documentElement) target = document.scrollingElement || document.documentElement;
-                  const wheel = new WheelEvent('wheel',{deltaX:Number(dx)||0,deltaY:Number(dy)||0,bubbles:true,cancelable:true,clientX:px,clientY:py});
-                  (node || target).dispatchEvent(wheel);
-                  if(target && target.scrollBy) target.scrollBy({left:Number(dx)||0,top:Number(dy)||0,behavior:'auto'});
-                  else window.scrollBy(Number(dx)||0,Number(dy)||0);
-                } catch(e) { console.warn('DriveDeck scroll bridge',e); }
-              };
-            })();
-        """.trimIndent()
-        page.evaluateJavascript(scrollScript, null)
-        Log.i(TAG, "Injected DriveDeck in-page YouTube keyboard and scroll bridge")
+        page.evaluateJavascript(script) { result ->
+            Log.i(TAG, "YouTube keyboard injection result=$result")
+        }
+        Log.i(TAG, "Injected DriveDeck YouTube keyboard v2")
     }
 
     private fun showDashboardPage() {
         if (isCleanedUp) return
+        youtubeFullscreenView?.let { view -> (view.parent as? ViewGroup)?.removeView(view) }
+        youtubeFullscreenView = null
+        youtubeFullscreenCallback?.onCustomViewHidden()
+        youtubeFullscreenCallback = null
+        youtubePageLayout?.visibility = View.GONE
         (youtubeWebView?.tag as? View)?.visibility = View.GONE
         dashboardView?.visibility = View.VISIBLE
         Log.i(TAG, "Returned to DriveDeck dashboard")
