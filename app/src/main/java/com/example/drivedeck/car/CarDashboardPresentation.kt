@@ -181,8 +181,14 @@ class CarDashboardPresentation(
             if (youtube != null && youtube.visibility == View.VISIBLE) {
                 val dx = distanceX.coerceIn(-1200f, 1200f)
                 val dy = distanceY.coerceIn(-1200f, 1200f)
-                val x = (youtube.width * 0.78f).toInt()
-                val y = (youtube.height * 0.58f).toInt()
+                val rootPos = IntArray(2)
+                val youtubePos = IntArray(2)
+                root.getLocationOnScreen(rootPos)
+                youtube.getLocationOnScreen(youtubePos)
+                val localX = scrollPointerX - (youtubePos[0] - rootPos[0])
+                val localY = scrollPointerY - (youtubePos[1] - rootPos[1])
+                val x = if (localX in 1f until youtube.width.toFloat()) localX.toInt() else (youtube.width * 0.78f).toInt()
+                val y = if (localY in 1f until youtube.height.toFloat()) localY.toInt() else (youtube.height * 0.58f).toInt()
                 youtube.evaluateJavascript(
                     "window.__driveDeckScrollBy && window.__driveDeckScrollBy($dx,$dy,$x,$y)",
                     null
@@ -401,13 +407,30 @@ class CarDashboardPresentation(
                 catch(_){el.dispatchEvent(new Event('input',{bubbles:true,composed:true}));}
                 el.dispatchEvent(new Event('change',{bubbles:true,composed:true}));
               }
+              function setNativeValue(el,value){
+                const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;
+                const setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;
+                if(setter)setter.call(el,value);else el.value=value;
+              }
+              function fireInput(el,data){
+                try{el.dispatchEvent(new InputEvent('beforeinput',{bubbles:true,composed:true,inputType:'insertText',data:data||null}));}catch(_){}
+                try{el.dispatchEvent(new InputEvent('input',{bubbles:true,composed:true,inputType:'insertText',data:data||null}));}
+                catch(_){el.dispatchEvent(new Event('input',{bubbles:true,composed:true}));}
+                el.dispatchEvent(new Event('change',{bubbles:true,composed:true}));
+              }
               function insert(value){
                 if(!target||!target.isConnected)return;
-                if(target.isContentEditable){document.execCommand('insertText',false,value);fireInput(target);return;}
-                const s=typeof target.selectionStart==='number'?target.selectionStart:target.value.length;
-                const e=typeof target.selectionEnd==='number'?target.selectionEnd:target.value.length;
-                try{target.setRangeText(value,s,e,'end');}catch(_){target.value=(target.value||'')+value;}
-                fireInput(target);
+                target.focus();
+                if(target.isContentEditable){document.execCommand('insertText',false,value);fireInput(target,value);return;}
+                const old=String(target.value||'');
+                const s=typeof target.selectionStart==='number'?target.selectionStart:old.length;
+                const e=typeof target.selectionEnd==='number'?target.selectionEnd:old.length;
+                const next=old.slice(0,s)+value+old.slice(e);
+                setNativeValue(target,next);
+                try{target.setSelectionRange(s+value.length,s+value.length);}catch(_){}
+                target.dispatchEvent(new KeyboardEvent('keydown',{key:value, bubbles:true}));
+                fireInput(target,value);
+                target.dispatchEvent(new KeyboardEvent('keyup',{key:value, bubbles:true}));
               }
               function add(label,row){
                 const b=document.createElement('button');b.type='button';b.textContent=label;
@@ -418,7 +441,7 @@ class CarDashboardPresentation(
                   if(label==='DONE'){board.style.display='none';return;}
                   if(!target||!target.isConnected){capture();if(!target)return;}
                   if(label==='SEARCH'){
-                    fireInput(target);
+                    fireInput(target,'');
                     target.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));
                     const form=target.form;
                     if(form&&form.requestSubmit)form.requestSubmit();
@@ -428,10 +451,13 @@ class CarDashboardPresentation(
                   if(label==='⇧'){board.dataset.shift=board.dataset.shift==='1'?'0':'1';return;}
                   if(label==='123'){board.dataset.num=board.dataset.num==='1'?'0':'1';b.textContent=board.dataset.num==='1'?'ABC':'123';return;}
                   if(label==='⌫'){
-                    if(target.isContentEditable){document.execCommand('delete');fireInput(target);return;}
+                    if(target.isContentEditable){document.execCommand('delete');fireInput(target,'');return;}
                     const s=target.selectionStart||0,e=target.selectionEnd||0;
-                    if(s===e&&s>0)target.setRangeText('',s-1,e,'end');else target.setRangeText('',s,e,'end');
-                    fireInput(target);return;
+                    const old=String(target.value||'');
+                    const start=s===e&&s>0?s-1:s;
+                    setNativeValue(target,old.slice(0,start)+old.slice(e));
+                    try{target.setSelectionRange(start,start);}catch(_){}
+                    fireInput(target,'');return;
                   }
                   if(label==='SPACE'){insert(' ');return;}
                   let ch=label;
@@ -443,6 +469,22 @@ class CarDashboardPresentation(
               }
               rows.forEach(chars=>{const row=document.createElement('div');row.className='r';(Array.isArray(chars)?chars:chars.split('')).forEach(k=>add(k,row));board.appendChild(row);});
               document.body.appendChild(board);
+              // Android Auto's scroll callback has deltas but no pointer coordinates.
+              // Scroll the nearest genuinely scrollable element beneath the last tap.
+              window.__driveDeckScrollBy=function(dx,dy,x,y){
+                let el=document.elementFromPoint(x,y);
+                if(el&&el.closest&&el.closest('#ddk-keyboard')) el=document.elementFromPoint(x,Math.max(0,y-80));
+                let node=el,scroller=null;
+                while(node&&node!==document.body&&node!==document.documentElement){
+                  const st=getComputedStyle(node),oy=st.overflowY,ox=st.overflowX;
+                  if(((oy==='auto'||oy==='scroll')&&node.scrollHeight>node.clientHeight+2)||
+                     ((ox==='auto'||ox==='scroll')&&node.scrollWidth>node.clientWidth+2)){scroller=node;break;}
+                  node=node.parentElement;
+                }
+                if(!scroller)scroller=document.scrollingElement||document.documentElement;
+                if(scroller)scroller.scrollBy({left:dx,top:dy,behavior:'auto'});
+                return !!scroller;
+              };
               document.addEventListener('focusin',capture,true);
               document.addEventListener('click',function(){setTimeout(()=>capture(),80);},true);
               document.addEventListener('touchend',function(){setTimeout(()=>capture(),100);},true);
