@@ -14,6 +14,30 @@ import java.net.URLEncoder
 import kotlin.concurrent.thread
 
 class MediaNotificationListener : NotificationListenerService() {
+    private var registeredController: MediaController? = null
+    private val playbackCallback = object : MediaController.Callback() {
+        override fun onPlaybackStateChanged(state: PlaybackState?) {
+            state?.let { persistPlaybackState(it) }
+        }
+    }
+
+    private fun attachPlaybackUpdates(controller: MediaController) {
+        if (registeredController?.sessionToken == controller.sessionToken) return
+        try { registeredController?.unregisterCallback(playbackCallback) } catch (_: Exception) {}
+        registeredController = controller
+        try {
+            controller.registerCallback(playbackCallback)
+            controller.playbackState?.let { persistPlaybackState(it) }
+        } catch (_: Exception) {}
+    }
+
+    private fun persistPlaybackState(state: PlaybackState) {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putLong("positionMs", state.position.coerceAtLeast(0L))
+            .putFloat("playbackSpeed", if (state.state == PlaybackState.STATE_PLAYING) state.playbackSpeed else 0f)
+            .putLong("updatedAt", SystemClock.elapsedRealtime())
+            .apply()
+    }
     override fun onListenerConnected() {
         super.onListenerConnected()
         getSharedPreferences(PREFS, MODE_PRIVATE).edit()
@@ -26,6 +50,8 @@ class MediaNotificationListener : NotificationListenerService() {
             .putBoolean("listenerConnected", false)
             .apply()
         activeController = null
+        try { registeredController?.unregisterCallback(playbackCallback) } catch (_: Exception) {}
+        registeredController = null
         super.onListenerDisconnected()
     }
 
@@ -55,7 +81,7 @@ class MediaNotificationListener : NotificationListenerService() {
         if (preferredSource != "auto" && !knownPlayer) return
 
         val controller = try { token?.let { MediaController(this, it) } } catch (_: Exception) { null }
-        if (controller != null) activeController = controller
+        if (controller != null) { activeController = controller; attachPlaybackUpdates(controller) }
         val metadata = controller?.metadata
         val title = (extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
             ?.takeIf { it.isNotBlank() && it != "Spotify" && it != "YouTube Music" }
@@ -115,12 +141,9 @@ class MediaNotificationListener : NotificationListenerService() {
             ) ?: return
             val controller = MediaController(this, token)
             activeController = controller
+            attachPlaybackUpdates(controller)
             val state = controller.playbackState ?: return
-            prefs.edit()
-                .putLong("positionMs", state.position.coerceAtLeast(0L))
-                .putFloat("playbackSpeed", if (state.state == PlaybackState.STATE_PLAYING) state.playbackSpeed else 0f)
-                .putLong("updatedAt", SystemClock.elapsedRealtime())
-                .apply()
+            persistPlaybackState(state)
         } catch (_: Exception) {
             // Some players do not expose a media-session token in notification extras.
         }
