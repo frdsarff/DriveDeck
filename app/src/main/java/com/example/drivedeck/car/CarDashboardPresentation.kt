@@ -146,6 +146,8 @@ class CarDashboardPresentation(
             }
             val px = x.coerceIn(0f, (root.width - 1).toFloat())
             val py = y.coerceIn(0f, (root.height - 1).toFloat())
+            scrollPointerX = px
+            scrollPointerY = py
             val downTime = SystemClock.uptimeMillis()
             val down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, px, py, 0)
             val up = MotionEvent.obtain(downTime, downTime + 60L, MotionEvent.ACTION_UP, px, py, 0)
@@ -170,8 +172,15 @@ class CarDashboardPresentation(
             if (isCleanedUp || presentationRoot !== root || root.width <= 0 || root.height <= 0) return@post
             val now = SystemClock.uptimeMillis()
             if (!scrollGestureActive) {
-                scrollPointerX = root.width / 2f
-                scrollPointerY = root.height / 2f
+                // Android Auto reports scroll deltas without touch coordinates.
+                // Use the last tap; default to YouTube's right-side content column.
+                if (youtubeWebView?.visibility == View.VISIBLE && (scrollPointerX <= 0f || scrollPointerY <= 0f)) {
+                    scrollPointerX = root.width * 0.78f
+                    scrollPointerY = root.height * 0.55f
+                } else if (scrollPointerX <= 0f || scrollPointerY <= 0f) {
+                    scrollPointerX = root.width / 2f
+                    scrollPointerY = root.height / 2f
+                }
                 val down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, scrollPointerX, scrollPointerY, 0)
                 root.dispatchTouchEvent(down)
                 down.recycle()
@@ -235,7 +244,7 @@ class CarDashboardPresentation(
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
-                        if (view === youtubeWebView) installYoutubeKeyboard(view)
+                        view?.takeIf { it === youtubeWebView }?.let { installYoutubeKeyboard(it) }
                     }
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                         val scheme = request?.url?.scheme ?: return true
@@ -344,10 +353,7 @@ class CarDashboardPresentation(
                   else if(label==='123'){board.dataset.numeric=board.dataset.numeric==='1'?'0':'1';b.textContent=board.dataset.numeric==='1'?'ABC':'123';return;}
                   else {
                     let ch=label;
-                    if(board.dataset.numeric==='1'){
-                      const map={q:"1",w:"2",e:"3",r:"4",t:"5",y:"6",u:"7",i:"8",o:"9",p:"0",a:"-",s:"/",d:":",f:";",g:"(",h:")",j:"$",k:"&",l:"@",z:"!",x:"?",c:"'",v:"\"",b:"#",n:"%",m:"+"};
-                      ch=map[ch]||ch;
-                    } else if(board.dataset.shift==='1') ch=ch.toUpperCase();
+                    if(board.dataset.numeric==='1'){const map={q:'1',w:'2',e:'3',r:'4',t:'5',y:'6',u:'7',i:'8',o:'9',p:'0',a:'-',s:'/',d:':',f:';',g:'(',h:')',j:'
                     target.setRangeText(ch,start,end,'end');
                     board.dataset.shift='0';
                   }
