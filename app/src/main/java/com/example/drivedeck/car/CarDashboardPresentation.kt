@@ -187,8 +187,8 @@ class CarDashboardPresentation(
                 youtube.getLocationOnScreen(youtubePos)
                 val localX = scrollPointerX - (youtubePos[0] - rootPos[0])
                 val localY = scrollPointerY - (youtubePos[1] - rootPos[1])
-                val x = if (localX in 1f until youtube.width.toFloat()) localX.toInt() else (youtube.width * 0.78f).toInt()
-                val y = if (localY in 1f until youtube.height.toFloat()) localY.toInt() else (youtube.height * 0.58f).toInt()
+                val x = if (localX >= 1f && localX < youtube.width.toFloat()) localX.toInt() else (youtube.width * 0.78f).toInt()
+                val y = if (localY >= 1f && localY < youtube.height.toFloat()) localY.toInt() else (youtube.height * 0.58f).toInt()
                 youtube.evaluateJavascript(
                     "window.__driveDeckScrollBy && window.__driveDeckScrollBy($dx,$dy,$x,$y)",
                     null
