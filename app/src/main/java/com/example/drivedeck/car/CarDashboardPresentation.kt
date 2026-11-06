@@ -34,7 +34,7 @@ class CarDashboardPresentation(
         context.getSharedPreferences("drivedeck_lyrics", Context.MODE_PRIVATE)
     }
     private val dashboardPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "dashboardLayout" && !isCleanedUp) {
+        if (key in setOf("dashboardLayout", "lyricsFontSize", "lyrics", "metadata") && !isCleanedUp) {
             Log.i(TAG, "Dashboard layout changed on phone; updating Android Auto without reconnect")
             updateDiagnostics(currentDiagnostics)
         }
@@ -175,6 +175,7 @@ class CarDashboardPresentation(
             .put("dashboardLayout", readDashboardLayout())
             .put("showMetadata", dashboardPrefs.getString("metadata", "true") != "false")
             .put("showLyrics", dashboardPrefs.getString("lyrics", "true") != "false")
+            .put("lyricsFontSize", dashboardPrefs.getString("lyricsFontSize", "25")?.toIntOrNull()?.coerceIn(14, 36) ?: 25)
             .put("musicTitle", lyricsPrefs.getString("title", "").orEmpty())
             .put("musicArtist", lyricsPrefs.getString("artist", "").orEmpty())
             .put("musicPackage", lyricsPrefs.getString("package", "").orEmpty())
