@@ -1,6 +1,7 @@
 package com.example.drivedeck.car
 
 import android.util.Log
+import com.example.drivedeck.R
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
