@@ -142,9 +142,23 @@ function render(s){
 }
 // Paint a usable dashboard immediately; native state can replace it once the bridge responds.
 render({dashboardLayout:DEFAULT});
+let lastLayoutSignature='';
+function syncSavedLayout(){
+ try{
+  if(!window.DriveDeckCar||typeof DriveDeckCar.getState!=='function')return;
+  const nativeState=JSON.parse(DriveDeckCar.getState());
+  const signature=JSON.stringify(nativeState.dashboardLayout||null);
+  if(signature&&signature!==lastLayoutSignature){
+   lastLayoutSignature=signature;
+   console.info('DriveDeck: applying saved phone layout',signature);
+   render(nativeState);
+  }
+ }catch(e){console.error('DriveDeck layout sync failed',e)}
+}
 try{
  if(window.DriveDeckCar&&typeof DriveDeckCar.getState==='function'){
   const nativeState=JSON.parse(DriveDeckCar.getState());
+  lastLayoutSignature=JSON.stringify(nativeState.dashboardLayout||null);
   render(nativeState);
  }else{
   console.warn('DriveDeckCar bridge unavailable; keeping default dashboard visible');
@@ -152,6 +166,7 @@ try{
 }catch(e){
  console.error('DriveDeck dashboard state load failed; keeping default dashboard visible',e);
 }
+setInterval(syncSavedLayout,1500);
 setInterval(updateClock,1000);
 setInterval(updateLyrics,250);
 </script>
