@@ -136,7 +136,8 @@ function render(s){
  document.documentElement.style.setProperty('--lyrics-active-font-size',Math.round(lyricSize*1.28)+'px');
  const widgets=cleanLayout(s);
  document.getElementById('dashboard').innerHTML=widgets.map(w=>widgetMarkup(w,s||{})).join('');
- document.getElementById('footer').textContent='DRIVEDECK • CUSTOM DASHBOARD • '+(s&&s.width?s.width+'×'+s.height:'');
+ const layoutInfo=(s&&s.dashboardLayout&&Array.isArray(s.dashboardLayout.widgets))?s.dashboardLayout.widgets.map(w=>`${w.type||'?'}:${w.x},${w.y} ${w.w}x${w.h}`).join(' | '):'missing';
+ document.getElementById('footer').textContent='DRIVEDECK • '+(s&&s.width?s.width+'×'+s.height:'')+' • LAYOUT '+layoutInfo;
  updateClock();
  updateLyrics();
 }
