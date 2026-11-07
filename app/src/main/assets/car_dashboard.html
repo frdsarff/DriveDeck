@@ -45,7 +45,12 @@ body{background:radial-gradient(ellipse at 10% 0%,#123b5b 0,transparent 48%),rad
 </style>
 </head>
 <body>
-<main id="dashboard"></main><div id="footer"></div>
+<main id="dashboard">
+<section class="widget clock clock-style-digital-date" style="grid-column:1 / span 4;grid-row:1 / span 2"><div class="value" id="liveClock">--:--</div><div class="sub" id="liveDate">Loading date…</div></section>
+<section class="widget weather" style="grid-column:5 / span 4;grid-row:1 / span 2"><div class="value">—</div><div class="sub">Weather loading…</div></section>
+<section class="widget music" style="grid-column:9 / span 4;grid-row:1 / span 2"><div class="playerColumn"><div class="disc">♫</div><div class="musicInfo"><div class="value">No track playing</div><div class="sub">Start Spotify or YouTube Music</div></div><div class="musicActions"><button disabled>|◀</button><button class="primary" disabled>▶</button><button disabled>▶|</button></div></div><div class="lyricsPanel"><div class="lyricsEmpty">Lyrics will appear here</div></div></section>
+<section class="widget shortcuts" style="grid-column:1 / span 6;grid-row:3 / span 2"><div class="appGrid"><a class="appTile" href="#" aria-label="YouTube Web"><svg class="youtubeIcon" viewBox="0 0 48 34" aria-hidden="true"><rect x="1" y="1" width="46" height="32" rx="9" fill="#ff0033"/><path d="M20 10.5L32 17 20 23.5Z" fill="white"/></svg></a></div></section>
+</main><div id="footer"></div>
 <script>
 const DEFAULT={widgets:[
 {id:'clock-1',type:'clock',x:0,y:0,w:4,h:2},
