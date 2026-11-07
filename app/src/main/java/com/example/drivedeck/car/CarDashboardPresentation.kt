@@ -36,8 +36,10 @@ class CarDashboardPresentation(
     initialDiagnostics: SurfaceDiagnostics
 ) : Presentation(outerContext, display, android.R.style.Theme_Black_NoTitleBar_Fullscreen) {
     @Volatile private var currentDiagnostics: SurfaceDiagnostics = initialDiagnostics
+    // Always read the same app-wide preferences file written by MainActivity.
+    // Presentation's display context can differ from the activity context.
     private val dashboardPrefs: SharedPreferences by lazy {
-        context.getSharedPreferences("drivedeck_settings", Context.MODE_PRIVATE)
+        outerContext.applicationContext.getSharedPreferences("drivedeck_settings", Context.MODE_PRIVATE)
     }
     private val lyricsPrefs: SharedPreferences by lazy {
         context.getSharedPreferences("drivedeck_lyrics", Context.MODE_PRIVATE)
