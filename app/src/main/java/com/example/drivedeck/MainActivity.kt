@@ -134,9 +134,16 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
-        fun setSetting(key: String, value: String) {
-            if (key !in setOf("source", "lyrics", "metadata", "lyricsFontSize", "dashboardLayout")) return
-            getSharedPreferences("drivedeck_settings", MODE_PRIVATE).edit().putString(key, value).apply()
+        fun setSetting(key: String, value: String): Boolean {
+            if (key !in setOf("source", "lyrics", "metadata", "lyricsFontSize", "dashboardLayout")) {
+                android.util.Log.w("DriveDeckSettings", "Rejected setting key: $key")
+                return false
+            }
+            val prefs = getSharedPreferences("drivedeck_settings", MODE_PRIVATE)
+            val saved = prefs.edit().putString(key, value).commit()
+            val verified = saved && prefs.getString(key, null) == value
+            android.util.Log.i("DriveDeckSettings", "setSetting($key): saved=$saved verified=$verified length=${value.length}")
+            return verified
         }
 
         @JavascriptInterface
