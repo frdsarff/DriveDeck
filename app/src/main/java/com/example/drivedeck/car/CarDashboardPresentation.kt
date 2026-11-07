@@ -44,10 +44,15 @@ class CarDashboardPresentation(
     private val lyricsPrefs: SharedPreferences by lazy {
         context.getSharedPreferences("drivedeck_lyrics", Context.MODE_PRIVATE)
     }
-    private val dashboardPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+    private val dashboardPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         if (key in setOf("dashboardLayout", "lyricsFontSize", "lyrics", "metadata") && !isCleanedUp) {
-            Log.i(TAG, "Dashboard layout changed on phone; updating Android Auto without reconnect")
-            updateDiagnostics(currentDiagnostics)
+            if (key == "dashboardLayout") {
+                val raw = prefs.getString("dashboardLayout", null)
+                val widgetCount = try { JSONObject(raw ?: "{}").optJSONArray("widgets")?.length() ?: 0 } catch (_: Exception) { -1 }
+                Log.i(TAG, "Dashboard layout preference changed: present=${raw != null}, chars=${raw?.length ?: 0}, widgets=$widgetCount")
+            }
+            Log.i(TAG, "Dashboard preference '$key' changed on phone; pushing fresh state to Android Auto")
+            pushCurrentDiagnostics()
         }
     }
     private val weatherPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -554,7 +559,22 @@ class CarDashboardPresentation(
         if (isCleanedUp) return
         val wv = webView ?: return
         val state = buildPoCStateJson(diag)
-        wv.post { if (!isCleanedUp && pageLoaded && webView != null) wv.evaluateJavascript("render($state);", null) }
+        val layout = try {
+            val widgets = JSONObject(state).optJSONObject("dashboardLayout")?.optJSONArray("widgets")
+            (0 until (widgets?.length() ?: 0)).joinToString(" | ") { index ->
+                val item = widgets!!.optJSONObject(index) ?: JSONObject()
+                item.optString("type", "?") + ":" + item.optInt("x") + "," + item.optInt("y") +
+                    " " + item.optInt("w") + "x" + item.optInt("h")
+            }
+        } catch (_: Exception) { "invalid" }
+        Log.i(TAG, "Pushing dashboard state to WebView: pageLoaded=$pageLoaded layout=[$layout]")
+        wv.post {
+            if (!isCleanedUp && pageLoaded && webView === wv) {
+                wv.evaluateJavascript("render($state);", null)
+            } else {
+                Log.w(TAG, "Dashboard state push skipped: pageLoaded=$pageLoaded, cleanedUp=$isCleanedUp")
+            }
+        }
     }
 
     private fun buildPoCStateJson(diag: SurfaceDiagnostics): String {
